@@ -34,9 +34,9 @@ test("PDF-backed extraction maps common filing fields into typed containers", ()
     "ACME Holdings, Inc.",
     "Business code 541611",
     "Total number of participants 1,245",
-    "Total assets 1,000,000 1,250,000",
-    "Total liabilities 100,000 120,000",
-    "Net assets 900,000 1,130,000",
+    "1f Total assets (add all amounts in lines 1a through 1e) 1f 1,000,000 1,250,000",
+    "1k Total liabilities (add all amounts in lines 1g through 1j) 1k 100,000 120,000",
+    "1l Net assets (subtract line 1k from line 1f) 1l 900,000 1,130,000",
     "Funding target attainment percentage 84.5%",
     "Schedule H",
     "Schedule SB"
@@ -65,6 +65,108 @@ test("PDF-backed extraction maps common filing fields into typed containers", ()
   assert.equal(extracted.fields.participantCountTotal.valueNumber, "1245");
   assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "1250000");
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.845");
+});
+
+test("summary footer and trailing line codes are preferred for real filing text", () => {
+  const documentText = [
+    "Form 5500 (2024) v. 240311 07/01/2024 04/20/2025 X X X X THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN 001 07/01/1973 14-1338371 THE COLLEGE OF SAINT ROSE 518-925-1915 432 WESTERN AVENUE ALBANY, NY 12203 611000 Filed with authorized/valid electronic signature.",
+    "5 Total number of participants at the beginning of the plan year 5 174",
+    "b Retired or separated participants receiving benefits 6b 10",
+    "c Other retired or separated participants entitled to future benefits 6c 0",
+    "e Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6e 0",
+    "f Total. Add lines 6d and 6e . 6f 10"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000b",
+      ingestionTimestamp: "2026-03-31T00:00:00Z",
+      fileName: "college-2024.pdf"
+    }
+  );
+
+  assert.equal(extracted.planName.valueText, "THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN");
+  assert.equal(extracted.planNumber.valueCode, "001");
+  assert.equal(extracted.sponsorEmployerIdentificationNumber.valueCode, "14-1338371");
+  assert.equal(extracted.fields.businessCode.valueCode, "611000");
+  assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "174");
+  assert.equal(extracted.fields.retiredParticipantsReceivingBenefits.valueNumber, "10");
+  assert.equal(extracted.fields.participantCountTotal.valueNumber, "10");
+});
+
+test("schedule h row-coded values are preferred over table-of-contents noise", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 07/01/2021 and ending 06/30/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN TABLE OF CONTENTS Page Independent Auditor's Report 1 Financial Statements Statements of Net Assets Available for Plan Benefits 5 Statements of Changes in Net Assets Available for Plan Benefits 6",
+    "Schedule H",
+    "1f Total assets (add all amounts in lines 1a through 1e) 1f 1,000,000 1,250,000",
+    "1k Total liabilities (add all amounts in lines 1g through 1j) 1k 100,000 120,000",
+    "1l Net assets (subtract line 1k from line 1f) 1l 900,000 1,130,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000c",
+      ingestionTimestamp: "2026-03-31T00:00:00Z",
+      fileName: "northwind-2022.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.assetsBeginningOfYear.valueNumber, "1000000");
+  assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "1250000");
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "900000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
+});
+
+test("redacted schedule placeholders are treated as missing instead of parsed values", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 07/01/2021 and ending 06/30/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "Schedule SB",
+    "THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN TABLE OF CONTENTS Page Independent Auditor's Report 1 Financial Statements Statements of Net Assets Available for Plan Benefits 5 Statements of Changes in Net Assets Available for Plan Benefits 6",
+    "1l Net assets (subtract line 1k from line 1f) 1l -123456789012345 -123456789012345",
+    "14 Funding target attainment percentage................................................................ 14 123.12 % 15 Adjusted funding target attainment percentage....................................................... 15 123.12 %"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000d",
+      ingestionTimestamp: "2026-03-31T00:00:00Z",
+      fileName: "northwind-2022-redacted.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.parseStatus, "missing");
+  assert.equal(extracted.fields.netAssetsEndOfYear.parseStatus, "missing");
+  assert.equal(extracted.fields.fundingTargetAttainmentPercent.parseStatus, "missing");
 });
 
 test("schedule-bound fields are marked not present when the filing omits that schedule", () => {
@@ -107,7 +209,7 @@ test("all-years aggregation carries expanded schema fields into exported rows", 
         "Northwind Pension Plan",
         "Plan number 010",
         "Employer identification number 98-7654321",
-        "Total assets 500,000 700,000",
+        "1f Total assets (add all amounts in lines 1a through 1e) 1f 500,000 700,000",
         "Schedule H"
       ].join("\n"),
       pages: [],

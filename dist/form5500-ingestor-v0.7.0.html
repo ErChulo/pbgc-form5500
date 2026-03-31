@@ -899,6 +899,61 @@ window.__FORM5500_VENDOR__ = {
     return String(value || "").replace(/\s+/g, " ").trim();
   }
 
+  function isLikelyPlaceholderValue(value) {
+    const text = sanitizeExtractedText(value);
+    if (!text) {
+      return false;
+    }
+
+    if (/ABCDEFGHI/i.test(text)) {
+      return true;
+    }
+
+    if (/^123\.12%?$/.test(text.replace(/\s+/g, ""))) {
+      return true;
+    }
+
+    const compactDigits = text.replace(/\D/g, "");
+    if (compactDigits.length >= 9 && /(0123456789|1234567890|123456789012|012345678901)/.test(compactDigits)) {
+      return true;
+    }
+
+    return false;
+  }
+
+  function isLikelyPlaceholderMatch(matchDetails) {
+    if (!matchDetails) {
+      return false;
+    }
+
+    if (isLikelyPlaceholderValue(matchDetails.value)) {
+      return true;
+    }
+
+    const excerpt = sanitizeExtractedText(matchDetails.excerpt);
+    if (!excerpt) {
+      return false;
+    }
+
+    if (/ABCDEFGHI/i.test(excerpt)) {
+      return true;
+    }
+
+    const compactDigits = excerpt.replace(/\D/g, "");
+    if (compactDigits.length >= 9 && /(0123456789|1234567890|123456789012|012345678901)/.test(compactDigits)) {
+      return true;
+    }
+
+    if (
+      /^123(?:\.12)?%?$/.test(String(matchDetails.value || "").replace(/\s+/g, "")) &&
+      /15[^]*?123\.12\s*%/i.test(excerpt)
+    ) {
+      return true;
+    }
+
+    return false;
+  }
+
   function isBoilerplateLine(line) {
     return /(annual return\/report|employee benefit plan|for paperw|department of labor|internal revenue service)/i.test(line);
   }
@@ -1450,12 +1505,36 @@ dialog::backdrop {
       if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
         continue;
       }
-      const matches = line.match(/\(?-?\$?\d[\d,]*(?:\.\d+)?%?\)?/g);
+      if (/schedule\s+[a-z]+.*form 5500|form 5500 \(\d{4}\)|this form is open to public inspection/i.test(line)) {
+        continue;
+      }
+      if (/table of contents|statements?\s+of\s+net assets|statements?\s+of\s+changes?\s+in\s+net assets|statement\s+of\s+accumulated\s+plan benefits/i.test(line)) {
+        continue;
+      }
+      const matches = line.match(/\(?-?\$?\d[\d,]*(?:\.\d+)?%?\)?(?![A-Za-z])/g);
       if (matches && matches[pairIndex]) {
         return { value: matches[pairIndex], sourceLabel: aliases[0], sourcePage: null, excerpt: line };
       }
     }
     return null;
+  }
+
+  function findScheduleLinePair(joinedText, lineCode, labelPattern, pairIndex) {
+    const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?(?:\\s*%?)?\\)?";
+    const regex = new RegExp(
+      `(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`,
+      "i"
+    );
+    const match = joinedText.match(regex);
+    if (!match || !match[pairIndex + 1]) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[pairIndex + 1]),
+      sourceLabel: lineCode,
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+    };
   }
 
   function findSingleValue(joinedText, aliases, valuePattern) {
@@ -1467,6 +1546,98 @@ dialog::backdrop {
       }
     }
     return null;
+  }
+
+  function findLastMatch(text, regex) {
+    const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : `${regex.flags}g`);
+    let last = null;
+    let match = globalRegex.exec(text);
+    while (match) {
+      last = match;
+      match = globalRegex.exec(text);
+    }
+    return last;
+  }
+
+  function findSummaryFooter(joinedText) {
+    const match = findLastMatch(
+      joinedText,
+      /Form 5500 \(\d{4}\) v\.[^]*?(\d{2}\/\d{2}\/\d{4})\s+(\d{2}\/\d{2}\/\d{4})\s+(?:X\s+){1,6}(.+?)Filed with authorized\/valid electronic signature\./i
+    );
+    if (!match) {
+      return null;
+    }
+    return {
+      beginDate: match[1],
+      endDate: match[2],
+      summaryText: sanitizeExtractedText(match[3]),
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 600)
+    };
+  }
+
+  function parseBasicPlanInfoFromSummary(joinedText) {
+    const footer = findSummaryFooter(joinedText);
+    if (!footer) {
+      return {};
+    }
+
+    const summary = footer.summaryText;
+    const match = summary.match(
+      /(.+?)\s+(\d{3})\s+(\d{2}\/\d{2}\/\d{4})\s+(\d{2}-?\d{7})\s+(.+?)\s+(\d{3}-\d{3}-\d{4}|\d{10})\s+(.+?)\s+(\d{6})$/i
+    );
+    if (!match) {
+      return {
+        planYearBeginDate: { value: footer.beginDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+        planYearEndDate: { value: footer.endDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt }
+      };
+    }
+
+    return {
+      planYearBeginDate: { value: footer.beginDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      planYearEndDate: { value: footer.endDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      planName: { value: sanitizeExtractedText(match[1]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      planNumber: { value: match[2], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      sponsorEmployerIdentificationNumber: {
+        value: match[4],
+        sourceLabel: "summary-footer",
+        sourcePage: 1,
+        excerpt: footer.excerpt
+      },
+      sponsorName: { value: sanitizeExtractedText(match[5]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      sponsorAddress: {
+        value: sanitizeExtractedText(match[7]),
+        sourceLabel: "summary-footer",
+        sourcePage: 1,
+        excerpt: footer.excerpt
+      },
+      businessCode: { value: match[8], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt }
+    };
+  }
+
+  function findTrailingLineCodeNumber(joinedText, labelPattern, lineCode) {
+    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
+    if (!match) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[1]),
+      sourceLabel: lineCode,
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 400)
+    };
+  }
+
+  function findTrailingLineCodeValue(joinedText, labelPattern, lineCode, valuePattern) {
+    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
+    if (!match) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[1]),
+      sourceLabel: lineCode,
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+    };
   }
 
   function detectPlanYearDates(joinedText) {
@@ -1517,63 +1688,73 @@ dialog::backdrop {
     const rawValues = {};
     const rawMatches = {};
 
+    const summaryMatches = parseBasicPlanInfoFromSummary(prepared.joinedText);
     const planYearDates = detectPlanYearDates(prepared.joinedText);
-    rawValues.planYearBeginDate = planYearDates.begin;
-    rawValues.planYearEndDate = planYearDates.end;
-    rawMatches.planName = findTextValue(prepared.lines, ["name of plan", "plan name"]);
-    rawMatches.planNumber = findSingleValue(prepared.joinedText, ["plan number", "\\bpn\\b"], "[A-Z0-9-]{1,12}");
-    rawMatches.sponsorEmployerIdentificationNumber = findSingleValue(
+    rawMatches.planYearBeginDate =
+      summaryMatches.planYearBeginDate || (planYearDates.begin
+        ? { value: planYearDates.begin, sourceLabel: "detected-plan-year", sourcePage: null, excerpt: planYearDates.begin }
+        : null);
+    rawMatches.planYearEndDate =
+      summaryMatches.planYearEndDate || (planYearDates.end
+        ? { value: planYearDates.end, sourceLabel: "detected-plan-year", sourcePage: null, excerpt: planYearDates.end }
+        : null);
+    rawMatches.planName = summaryMatches.planName || findTextValue(prepared.lines, ["name of plan"]);
+    rawMatches.planNumber =
+      summaryMatches.planNumber ||
+      findSingleValue(prepared.joinedText, ["three-digit plan number \\(pn\\)", "plan number \\(pn\\)", "plan number"], "\\d{3}");
+    rawMatches.sponsorEmployerIdentificationNumber =
+      summaryMatches.sponsorEmployerIdentificationNumber ||
+      findSingleValue(prepared.joinedText, ["employer identification number \\(ein\\)", "employer identification number"], "\\d{2}-?\\d{7}");
+    rawMatches.sponsorName =
+      summaryMatches.sponsorName ||
+      findTextValue(prepared.lines, ["plan sponsor's name", "plan sponsor’s name", "name of plan sponsor"]);
+    rawMatches.sponsorAddress = summaryMatches.sponsorAddress || findTextValue(prepared.lines, ["mailing address"]);
+    rawMatches.businessCode =
+      summaryMatches.businessCode ||
+      findSingleValue(prepared.joinedText, ["business code \\(see instructions\\)", "business code"], "\\d{6}");
+    rawMatches.participantCountBeginningOfYear = findTrailingLineCodeNumber(
       prepared.joinedText,
-      ["employer identification number", "\\bein\\b"],
-      "\\d{2}-?\\d{7}"
-    );
-    rawMatches.sponsorName = findTextValue(prepared.lines, ["name of plan sponsor", "plan sponsor"]);
-    rawMatches.sponsorAddress = findTextValue(prepared.lines, ["mailing address", "address of plan sponsor"]);
-    rawMatches.businessCode = findSingleValue(
+      "5\\s+Total number of participants at the beginning of the plan year",
+      "5"
+    ) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
+    rawMatches.retiredParticipantsReceivingBenefits = findTrailingLineCodeNumber(
       prepared.joinedText,
-      ["business code", "principal business activity code"],
-      "\\d{6}"
-    );
-    rawMatches.participantCountBeginningOfYear = findSingleValue(
+      "Retired or separated participants receiving benefits",
+      "6b"
+    ) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
+    rawMatches.separatedParticipantsEntitledToBenefits = findTrailingLineCodeNumber(
       prepared.joinedText,
-      ["participants at the beginning of the plan year", "line 6a"],
+      "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+      "6c"
+    ) || findSingleValue(prepared.joinedText, ["separated participants entitled to future benefits"], "\\d[\\d,]*");
+    rawMatches.deceasedParticipantsBeneficiaries = findTrailingLineCodeNumber(
+      prepared.joinedText,
+      "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+      "6e"
+    ) || findSingleValue(
+      prepared.joinedText,
+      ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits"],
       "\\d[\\d,]*"
     );
-    rawMatches.retiredParticipantsReceivingBenefits = findSingleValue(
+    rawMatches.participantCountTotal = findTrailingLineCodeNumber(
       prepared.joinedText,
-      ["retired or separated participants receiving benefits", "line 6d"],
-      "\\d[\\d,]*"
-    );
-    rawMatches.separatedParticipantsEntitledToBenefits = findSingleValue(
-      prepared.joinedText,
-      ["separated participants entitled to future benefits", "line 6e"],
-      "\\d[\\d,]*"
-    );
-    rawMatches.deceasedParticipantsBeneficiaries = findSingleValue(
-      prepared.joinedText,
-      ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits", "line 6f"],
-      "\\d[\\d,]*"
-    );
-    rawMatches.participantCountTotal = findSingleValue(
-      prepared.joinedText,
-      ["total number of participants", "line 6g"],
-      "\\d[\\d,]*"
-    );
-    rawMatches.assetsBeginningOfYear = findNumberFromLinePair(prepared.lines, ["total assets", "line 1a"], 0);
-    rawMatches.assetsEndOfYear = findNumberFromLinePair(prepared.lines, ["total assets", "line 1b"], 1);
-    rawMatches.liabilitiesBeginningOfYear = findNumberFromLinePair(prepared.lines, ["total liabilities", "line 2a"], 0);
-    rawMatches.liabilitiesEndOfYear = findNumberFromLinePair(prepared.lines, ["total liabilities", "line 2b"], 1);
-    rawMatches.netAssetsBeginningOfYear = findNumberFromLinePair(prepared.lines, ["net assets", "line 3a"], 0);
-    rawMatches.netAssetsEndOfYear = findNumberFromLinePair(prepared.lines, ["net assets", "line 3b"], 1);
+      "Total\\. Add lines 6d and 6e",
+      "6f"
+    ) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
+    rawMatches.assetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0);
+    rawMatches.assetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1);
+    rawMatches.liabilitiesBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0);
+    rawMatches.liabilitiesEndOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1);
+    rawMatches.netAssetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0);
+    rawMatches.netAssetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1);
     rawMatches.scheduleHAccountantOpinion = findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
-    rawMatches.fundingTargetAttainmentPercent = findSingleValue(
-      prepared.joinedText,
-      ["funding target attainment percentage", "line 27"],
-      "\\d[\\d.,]*%?"
-    );
+    rawMatches.fundingTargetAttainmentPercent =
+      findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
+      findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
 
     Object.keys(rawMatches).forEach((fieldId) => {
-      rawValues[fieldId] = rawMatches[fieldId] ? rawMatches[fieldId].value : null;
+      rawValues[fieldId] =
+        rawMatches[fieldId] && !isLikelyPlaceholderMatch(rawMatches[fieldId]) ? rawMatches[fieldId].value : null;
     });
 
     const fieldMap = {};
