@@ -6,8 +6,8 @@
 ## Summary
 
 Build a browser-only ingestion workspace with four input modes, one shared queue,
-one throttled render path, and one remote download engine reused by pasted URLs
-and EFAST CSV derived items.
+one throttled render path, and one remote-reference workflow reused by pasted
+URLs and EFAST CSV derived items.
 
 ## Technical Context
 
@@ -17,8 +17,8 @@ and EFAST CSV derived items.
 **Testing**: `node --test` unit tests for pure logic  
 **Target Platform**: Modern desktop browsers opened from `file://` or served over HTTP(S)  
 **Project Type**: Single-file browser application  
-**Performance Goals**: Responsive queue interactions with at least 50 items; throttled DOM updates during download progress  
-**Constraints**: One distributable HTML file in `/dist`; no server component; no document-content logging  
+**Performance Goals**: Responsive queue interactions with at least 50 items; throttled DOM updates during queue updates  
+**Constraints**: One distributable HTML file in `/dist`; no server component; no document-content logging; no programmatic remote fetch  
 **Scale/Scope**: Initial milestone supports four ingest modes and one consolidated queue
 
 ## Constitution Check
@@ -26,8 +26,8 @@ and EFAST CSV derived items.
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
 - Single-file delivery preserved by a custom Node build that inlines CSS and JavaScript into one HTML file in `/dist`.
-- No server component or external runtime assets are required for local ingestion; HTTP(S) serving is only needed when the user wants browser-permitted remote downloads.
-- Privacy is preserved by keeping uploaded files, CSV contents, and downloaded bytes in memory only and by avoiding content logging.
+- No server component or external runtime assets are required; remote URLs are stored only as references and are never fetched by the application.
+- Privacy is preserved by keeping uploaded files and CSV contents in memory only and by avoiding content logging.
 - Accessibility is handled through keyboard-reachable controls, visible focus states, semantic tabs, and high-contrast mode.
 - Performance is protected by requestAnimationFrame-based render throttling and object URL revocation on preview close.
 - Typed extraction compatibility is preserved by generating or updating one extracted record per queue item, even when the queue item began as CSV metadata only.
@@ -77,14 +77,14 @@ script that emits the required self-contained HTML file.
 
 - Decision: Use a zero-dependency custom build pipeline.
   - Rationale: the project started from an empty scaffold and must emit exactly one HTML file.
-- Decision: Reuse one download engine for pasted URLs and CSV-derived URLs.
-  - Rationale: this keeps concurrency, cancellation, retry, and validation behavior consistent.
+- Decision: Reuse one remote-reference workflow for pasted URLs and CSV-derived URLs.
+  - Rationale: this keeps queue behavior consistent without violating the no-fetch policy.
 - Decision: Parse EFAST CSV with a resilient normalized-header mapper.
   - Rationale: EFAST exports vary in spacing, punctuation, and capitalization.
 
 ## Phase 1: Design Artifacts
 
-- `research.md`: captures build, download-manager, and CSV-mapping decisions.
+- `research.md`: captures build, remote-reference workflow, and CSV-mapping decisions.
 - `data-model.md`: defines `QueueItem`, `DownloadJob`, and `CsvRowMetadata`.
 - `contracts/ui-contract.md`: documents queue state transitions, input contract, and user messaging expectations.
 - `quickstart.md`: defines the manual validation flow for local, remote, and CSV ingestion.

@@ -6,6 +6,8 @@ const srcDir = path.join(rootDir, "src");
 const distDir = path.join(rootDir, "dist");
 const outputName = "form5500-ingestor-v0.7.0.html";
 const outputPath = path.join(distDir, outputName);
+const pdfModulePath = path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.min.mjs");
+const pdfWorkerPath = path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs");
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -17,12 +19,41 @@ function escapeInlineScript(source) {
 
 const template = read(path.join(srcDir, "index.template.html"));
 const css = read(path.join(srcDir, "styles.css"));
+const codeLists = read(path.join(srcDir, "lib", "schema", "code-lists.js"));
+const historicalRegistry = read(path.join(srcDir, "lib", "schema", "historical-registry.js"));
+const extractionQuality = read(path.join(srcDir, "lib", "extraction", "quality.js"));
+const scheduleRouter = read(path.join(srcDir, "lib", "extraction", "schedule-router.js"));
+const fieldMapper = read(path.join(srcDir, "lib", "extraction", "field-mapper.js"));
+const pdfSource = read(path.join(srcDir, "lib", "extraction", "pdf-source.js"));
+const ocrPipeline = read(path.join(srcDir, "lib", "extraction", "ocr-pipeline.js"));
 const core = read(path.join(srcDir, "lib", "core.js"));
 const app = read(path.join(srcDir, "app.js"));
+const vendorBootstrap = [
+  "window.__FORM5500_VENDOR__ = {",
+  `  pdfModuleBase64: ${JSON.stringify(fs.readFileSync(pdfModulePath).toString("base64"))},`,
+  `  pdfWorkerBase64: ${JSON.stringify(fs.readFileSync(pdfWorkerPath).toString("base64"))}`,
+  "};"
+].join("\n");
 
 const html = template
   .replace("/*__INLINE_CSS__*/", css)
-  .replace("/*__INLINE_JS__*/", escapeInlineScript(`${core}\n\n${app}`));
+  .replace(
+    "/*__INLINE_JS__*/",
+    escapeInlineScript(
+      [
+        vendorBootstrap,
+        codeLists,
+        historicalRegistry,
+        extractionQuality,
+        scheduleRouter,
+        fieldMapper,
+        pdfSource,
+        ocrPipeline,
+        core,
+        app
+      ].join("\n\n")
+    )
+  );
 
 fs.rmSync(distDir, { recursive: true, force: true });
 fs.mkdirSync(distDir, { recursive: true });

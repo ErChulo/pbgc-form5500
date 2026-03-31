@@ -16,7 +16,7 @@
           <h1>Form 5500 Ingestor</h1>
           <p class="lede">
             Ingest local PDFs, remote PDF links, and EFAST search CSV exports, then
-            assemble one deterministic all-years table.
+            extract filing fields into one deterministic all-years table.
           </p>
         </div>
         <div class="hero-actions">
@@ -66,18 +66,14 @@
             <div class="stack-row">
               <div>
                 <h2>Mode 3: Remote PDF links</h2>
-                <p class="muted">Paste one URL per line, add them to the queue, then download with a controlled concurrency.</p>
+                <p class="muted">Paste one URL per line, add them to the queue, then open each link in the browser and re-ingest the downloaded PDF locally.</p>
               </div>
-              <label class="stack-row compact" for="download-concurrency">
-                <span>Concurrency</span>
-                <input id="download-concurrency" type="number" min="1" max="8" value="3">
-              </label>
             </div>
             <textarea id="url-input" rows="6" placeholder="https://example.org/filing-2023.pdf&#10;https://example.org/filing-2024.pdf"></textarea>
             <div id="remote-origin-warning" class="note warning" hidden></div>
             <div class="actions-row">
               <button id="add-links-button" type="button">Add links to queue</button>
-              <button id="download-now-button" type="button" class="secondary">Download now</button>
+              <button id="download-now-button" type="button" class="secondary">Show manual download guidance</button>
             </div>
           </article>
 
@@ -113,7 +109,7 @@
             <div class="stack-row all-years-head">
               <div>
                 <h2>All years</h2>
-                <p class="muted">One row per plan year with deterministic duplicate-year selection.</p>
+                <p class="muted">One row per plan year with deterministic duplicate-year selection and schema-driven extracted fields.</p>
               </div>
               <div class="actions-row">
                 <button id="download-csv-button" type="button">Download CSV</button>

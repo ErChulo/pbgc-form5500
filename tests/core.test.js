@@ -63,3 +63,15 @@ test("EFAST CSV ingestion tolerates header variants and extracts a PDF URL when 
   assert.equal(result.records[0].metadata.sponsorEmployerIdentificationNumber, "123456789");
   assert.equal(result.records[0].remoteUrl, "https://example.com/forms/alpha.pdf");
 });
+
+test("EFAST CSV ingestion keeps detail-page links metadata-only when no direct PDF URL exists", () => {
+  const csvText = [
+    "Plan Name,Plan Number,Sponsor EIN,Detail URL",
+    'Beta Plan,008,987654321,https://example.com/filing/detail?id=42'
+  ].join("\n");
+
+  const result = core.ingestEfastCsv(csvText, { sourceName: "efast.csv" });
+  assert.equal(result.records.length, 1);
+  assert.equal(result.records[0].remoteUrl, null);
+  assert.equal(result.records[0].metadata.detailUrl, "https://example.com/filing/detail?id=42");
+});

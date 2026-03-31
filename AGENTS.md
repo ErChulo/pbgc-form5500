@@ -3,6 +3,8 @@
 Auto-generated from all feature plans. Last updated: 2026-03-31
 
 ## Active Technologies
+- JavaScript in browser plus Node.js 24 for build/test + `pdf.js` display layer for PDF parsing and rendering; `tesseract.js` for OCR fallback; no backend services (003-full-5500-extraction)
+- In-memory filing artifacts, extracted records, schema registry, and user-triggered CSV export (003-full-5500-extraction)
 
 - JavaScript running in modern browsers; Node.js 24 for build and test + No runtime dependencies; built-in browser and Node modules only (001-ingestion-local-and-remote-and-efast-csv)
 
@@ -22,6 +24,7 @@ npm test && npm run lint
 JavaScript running in modern browsers; Node.js 24 for build and test: Follow standard conventions
 
 ## Recent Changes
+- 003-full-5500-extraction: Added JavaScript in browser plus Node.js 24 for build/test + `pdf.js` display layer for PDF parsing and rendering; `tesseract.js` for OCR fallback; no backend services
 
 - 001-ingestion-local-and-remote-and-efast-csv: Added JavaScript running in modern browsers; Node.js 24 for build and test + No runtime dependencies; built-in browser and Node modules only
 
