@@ -1508,60 +1508,92 @@ dialog::backdrop {
 
     const prepared = prepareText(source.documentText);
     const schemaRegistry = source.schemaRegistry || [];
+    const detectedSchedules = new Set(
+      ((source.context && Array.isArray(source.context.schedules) ? source.context.schedules : []) || [])
+        .map((schedule) => String(schedule || "").toUpperCase())
+    );
     const evidence = [];
     const exceptions = [];
     const rawValues = {};
+    const rawMatches = {};
 
     const planYearDates = detectPlanYearDates(prepared.joinedText);
     rawValues.planYearBeginDate = planYearDates.begin;
     rawValues.planYearEndDate = planYearDates.end;
-    rawValues.planName = findTextValue(prepared.lines, ["name of plan", "plan name"])?.value || null;
-    rawValues.planNumber =
-      findSingleValue(prepared.joinedText, ["plan number", "\\bpn\\b"], "[A-Z0-9-]{1,12}")?.value || null;
-    rawValues.sponsorEmployerIdentificationNumber =
-      findSingleValue(prepared.joinedText, ["employer identification number", "\\bein\\b"], "\\d{2}-?\\d{7}")?.value ||
-      null;
-    rawValues.sponsorName = findTextValue(prepared.lines, ["name of plan sponsor", "plan sponsor"])?.value || null;
-    rawValues.sponsorAddress = findTextValue(prepared.lines, ["mailing address", "address of plan sponsor"])?.value || null;
-    rawValues.businessCode =
-      findSingleValue(prepared.joinedText, ["business code", "principal business activity code"], "\\d{6}")?.value || null;
-    rawValues.participantCountBeginningOfYear =
-      findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year", "line 6a"], "\\d[\\d,]*")?.value ||
-      null;
-    rawValues.retiredParticipantsReceivingBenefits =
-      findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits", "line 6d"], "\\d[\\d,]*")?.value ||
-      null;
-    rawValues.separatedParticipantsEntitledToBenefits =
-      findSingleValue(
-        prepared.joinedText,
-        ["separated participants entitled to future benefits", "line 6e"],
-        "\\d[\\d,]*"
-      )?.value || null;
-    rawValues.deceasedParticipantsBeneficiaries =
-      findSingleValue(
-        prepared.joinedText,
-        ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits", "line 6f"],
-        "\\d[\\d,]*"
-      )?.value || null;
-    rawValues.participantCountTotal =
-      findSingleValue(prepared.joinedText, ["total number of participants", "line 6g"], "\\d[\\d,]*")?.value || null;
-    rawValues.assetsBeginningOfYear = findNumberFromLinePair(prepared.lines, ["total assets", "line 1a"], 0)?.value || null;
-    rawValues.assetsEndOfYear = findNumberFromLinePair(prepared.lines, ["total assets", "line 1b"], 1)?.value || null;
-    rawValues.liabilitiesBeginningOfYear =
-      findNumberFromLinePair(prepared.lines, ["total liabilities", "line 2a"], 0)?.value || null;
-    rawValues.liabilitiesEndOfYear =
-      findNumberFromLinePair(prepared.lines, ["total liabilities", "line 2b"], 1)?.value || null;
-    rawValues.netAssetsBeginningOfYear =
-      findNumberFromLinePair(prepared.lines, ["net assets", "line 3a"], 0)?.value || null;
-    rawValues.netAssetsEndOfYear = findNumberFromLinePair(prepared.lines, ["net assets", "line 3b"], 1)?.value || null;
-    rawValues.scheduleHAccountantOpinion =
-      findTextValue(prepared.lines, ["accountant's opinion", "opinion"])?.value || null;
-    rawValues.fundingTargetAttainmentPercent =
-      findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?")?.value ||
-      null;
+    rawMatches.planName = findTextValue(prepared.lines, ["name of plan", "plan name"]);
+    rawMatches.planNumber = findSingleValue(prepared.joinedText, ["plan number", "\\bpn\\b"], "[A-Z0-9-]{1,12}");
+    rawMatches.sponsorEmployerIdentificationNumber = findSingleValue(
+      prepared.joinedText,
+      ["employer identification number", "\\bein\\b"],
+      "\\d{2}-?\\d{7}"
+    );
+    rawMatches.sponsorName = findTextValue(prepared.lines, ["name of plan sponsor", "plan sponsor"]);
+    rawMatches.sponsorAddress = findTextValue(prepared.lines, ["mailing address", "address of plan sponsor"]);
+    rawMatches.businessCode = findSingleValue(
+      prepared.joinedText,
+      ["business code", "principal business activity code"],
+      "\\d{6}"
+    );
+    rawMatches.participantCountBeginningOfYear = findSingleValue(
+      prepared.joinedText,
+      ["participants at the beginning of the plan year", "line 6a"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.retiredParticipantsReceivingBenefits = findSingleValue(
+      prepared.joinedText,
+      ["retired or separated participants receiving benefits", "line 6d"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.separatedParticipantsEntitledToBenefits = findSingleValue(
+      prepared.joinedText,
+      ["separated participants entitled to future benefits", "line 6e"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.deceasedParticipantsBeneficiaries = findSingleValue(
+      prepared.joinedText,
+      ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits", "line 6f"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.participantCountTotal = findSingleValue(
+      prepared.joinedText,
+      ["total number of participants", "line 6g"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.assetsBeginningOfYear = findNumberFromLinePair(prepared.lines, ["total assets", "line 1a"], 0);
+    rawMatches.assetsEndOfYear = findNumberFromLinePair(prepared.lines, ["total assets", "line 1b"], 1);
+    rawMatches.liabilitiesBeginningOfYear = findNumberFromLinePair(prepared.lines, ["total liabilities", "line 2a"], 0);
+    rawMatches.liabilitiesEndOfYear = findNumberFromLinePair(prepared.lines, ["total liabilities", "line 2b"], 1);
+    rawMatches.netAssetsBeginningOfYear = findNumberFromLinePair(prepared.lines, ["net assets", "line 3a"], 0);
+    rawMatches.netAssetsEndOfYear = findNumberFromLinePair(prepared.lines, ["net assets", "line 3b"], 1);
+    rawMatches.scheduleHAccountantOpinion = findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
+    rawMatches.fundingTargetAttainmentPercent = findSingleValue(
+      prepared.joinedText,
+      ["funding target attainment percentage", "line 27"],
+      "\\d[\\d.,]*%?"
+    );
+
+    Object.keys(rawMatches).forEach((fieldId) => {
+      rawValues[fieldId] = rawMatches[fieldId] ? rawMatches[fieldId].value : null;
+    });
 
     const fieldMap = {};
     schemaRegistry.forEach((definition) => {
+      const requiredSchedule = definition.locationRef && definition.locationRef.schedule
+        ? String(definition.locationRef.schedule).toUpperCase()
+        : null;
+      const matchDetails = rawMatches[definition.fieldId] || null;
+      if (requiredSchedule && !detectedSchedules.has(requiredSchedule)) {
+        fieldMap[definition.fieldId] = normalizeFieldValue(null, definition.dataType);
+        exceptions.push({
+          fieldId: definition.fieldId,
+          code: "schedule-not-present",
+          message: `Schedule ${requiredSchedule} is not present in this filing package.`,
+          sourcePage: null,
+          sourceLabel: definition.name
+        });
+        return;
+      }
+
       const rawValue = rawValues[definition.fieldId] == null ? null : rawValues[definition.fieldId];
       const fieldValue = normalizeFieldValue(rawValue, definition.dataType);
       fieldMap[definition.fieldId] = fieldValue;
@@ -1569,9 +1601,9 @@ dialog::backdrop {
         evidence.push({
           fieldId: definition.fieldId,
           status: "parsed",
-          sourcePage: null,
-          sourceLabel: definition.name,
-          excerpt: rawValue
+          sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,
+          sourceLabel: matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : definition.name,
+          excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
       } else {
         exceptions.push({
@@ -1581,8 +1613,8 @@ dialog::backdrop {
             fieldValue.parseStatus === "failed"
               ? fieldValue.parseNotes || "Parser could not normalize the extracted value."
               : "No value was detected in the extracted PDF text.",
-          sourcePage: null,
-          sourceLabel: definition.name
+          sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,
+          sourceLabel: matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : definition.name
         });
       }
     });
@@ -2129,7 +2161,8 @@ dialog::backdrop {
       ? fieldMapperApi.mapDocumentFields({
           documentText: pdfData.documentText,
           schemaRegistry,
-          normalizeFieldValue
+          normalizeFieldValue,
+          context: initialContext
         })
       : { fieldMap: {}, evidence: [], exceptions: [], filingKind: "original" };
     const inferredDates = inferDatesFromFilename(source.fileName || "");

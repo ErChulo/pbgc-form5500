@@ -67,6 +67,37 @@ test("PDF-backed extraction maps common filing fields into typed containers", ()
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.845");
 });
 
+test("schedule-bound fields are marked not present when the filing omits that schedule", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2022 and ending 12/31/2022",
+    "Name of plan",
+    "ACME Salaried Employees Retirement Plan",
+    "Plan number 001",
+    "Employer identification number 12-3456789"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1001",
+      ingestionTimestamp: "2026-03-31T00:00:00Z",
+      fileName: "acme-2022-no-schedules.pdf"
+    }
+  );
+
+  const scheduleHException = extracted.extraction.exceptions.find((entry) => entry.fieldId === "assetsBeginningOfYear");
+  assert.ok(scheduleHException);
+  assert.equal(scheduleHException.code, "schedule-not-present");
+  assert.match(scheduleHException.message, /Schedule H is not present/i);
+  assert.equal(extracted.fields.assetsBeginningOfYear.parseStatus, "missing");
+});
+
 test("all-years aggregation carries expanded schema fields into exported rows", () => {
   const extracted = core.buildExtractedFromPdfData(
     {
@@ -76,7 +107,8 @@ test("all-years aggregation carries expanded schema fields into exported rows", 
         "Northwind Pension Plan",
         "Plan number 010",
         "Employer identification number 98-7654321",
-        "Total assets 500,000 700,000"
+        "Total assets 500,000 700,000",
+        "Schedule H"
       ].join("\n"),
       pages: [],
       pageCount: 1,

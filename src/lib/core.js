@@ -408,7 +408,8 @@
       ? fieldMapperApi.mapDocumentFields({
           documentText: pdfData.documentText,
           schemaRegistry,
-          normalizeFieldValue
+          normalizeFieldValue,
+          context: initialContext
         })
       : { fieldMap: {}, evidence: [], exceptions: [], filingKind: "original" };
     const inferredDates = inferDatesFromFilename(source.fileName || "");

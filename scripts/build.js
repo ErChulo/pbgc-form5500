@@ -6,8 +6,6 @@ const srcDir = path.join(rootDir, "src");
 const distDir = path.join(rootDir, "dist");
 const outputName = "form5500-ingestor-v0.7.0.html";
 const outputPath = path.join(distDir, outputName);
-const pdfModulePath = path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.min.mjs");
-const pdfWorkerPath = path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs");
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -16,6 +14,24 @@ function read(filePath) {
 function escapeInlineScript(source) {
   return source.replace(/<\/script/gi, "<\\/script");
 }
+
+function resolveExistingPath(candidates) {
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
+  }
+  throw new Error(`Required build asset not found. Checked: ${candidates.join(", ")}`);
+}
+
+const pdfModulePath = resolveExistingPath([
+  path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.min.mjs"),
+  path.join(rootDir, "node_modules", "pdfjs-dist", "build", "pdf.min.mjs")
+]);
+const pdfWorkerPath = resolveExistingPath([
+  path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs"),
+  path.join(rootDir, "node_modules", "pdfjs-dist", "build", "pdf.worker.min.mjs")
+]);
 
 const template = read(path.join(srcDir, "index.template.html"));
 const css = read(path.join(srcDir, "styles.css"));
