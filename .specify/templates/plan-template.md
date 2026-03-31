@@ -31,7 +31,15 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+- Single-file delivery preserved with exactly one distributable HTML file in
+  `/dist`
+- No server component or runtime dependency on external assets introduced
+- Privacy safeguards keep document contents local and avoid content logging
+- Accessibility includes keyboard operation, visible focus, and high contrast
+- Performance plan keeps the UI responsive with at least 50 queued items
+- Data model preserves typed field containers and location references
+- Export rules define stable row order, column order, and duplicate-year
+  resolution
 
 ## Project Structure
 

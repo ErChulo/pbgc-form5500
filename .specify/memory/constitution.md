@@ -1,50 +1,108 @@
-# [PROJECT_NAME] Constitution
-<!-- Example: Spec Constitution, TaskFlow Constitution, etc. -->
+<!--
+Sync Impact Report
+- Version change: template -> 1.0.0
+- Modified principles:
+  - [PRINCIPLE_1_NAME] -> I. Single-File Browser Delivery
+  - [PRINCIPLE_2_NAME] -> II. Local-Only Processing & Privacy
+  - [PRINCIPLE_3_NAME] -> III. Accessible, Responsive Interaction
+  - [PRINCIPLE_4_NAME] -> IV. Deterministic Typed Data Contracts
+  - [PRINCIPLE_5_NAME] -> V. Release Discipline & Feature Isolation
+- Added sections:
+  - Operational Constraints
+  - Delivery Workflow
+- Removed sections:
+  - None
+- Templates requiring updates:
+  - ✅ updated /workspaces/pbgc-form5500/.specify/templates/plan-template.md
+  - ✅ updated /workspaces/pbgc-form5500/.specify/templates/spec-template.md
+  - ✅ updated /workspaces/pbgc-form5500/.specify/templates/tasks-template.md
+  - ✅ reviewed /workspaces/pbgc-form5500/.specify/templates/constitution-template.md
+- Follow-up TODOs:
+  - None
+-->
+# PBGC Form 5500 Constitution
 
 ## Core Principles
 
-### [PRINCIPLE_1_NAME]
-<!-- Example: I. Library-First -->
-[PRINCIPLE_1_DESCRIPTION]
-<!-- Example: Every feature starts as a standalone library; Libraries must be self-contained, independently testable, documented; Clear purpose required - no organizational-only libraries -->
+### I. Single-File Browser Delivery
+Every release MUST produce exactly one self-contained HTML file in `/dist`. The
+distributable MUST embed all CSS and JavaScript inline, MUST run in a browser
+without a server for local file ingestion, and MUST not require any backend or
+runtime asset fetches other than explicit user-initiated downloads from
+user-provided URLs when the app is served over HTTP(S). Any build, refactor, or
+feature work that introduces multiple runtime files or a server dependency is a
+constitution violation.
 
-### [PRINCIPLE_2_NAME]
-<!-- Example: II. CLI Interface -->
-[PRINCIPLE_2_DESCRIPTION]
-<!-- Example: Every library exposes functionality via CLI; Text in/out protocol: stdin/args → stdout, errors → stderr; Support JSON + human-readable formats -->
+### II. Local-Only Processing & Privacy
+All file parsing, normalization, extraction, preview generation, and export
+logic MUST execute locally in the browser. The application MUST NOT transmit
+document contents anywhere, MUST NOT log document contents, and MUST persist
+only metadata unless the user explicitly exports data. Remote fetches are
+limited to user-supplied URLs and downloaded bytes MUST remain in memory only.
+When browser origin restrictions prevent remote downloads, the product MUST
+explain the restriction and direct the user to manual download plus drag-and-drop.
 
-### [PRINCIPLE_3_NAME]
-<!-- Example: III. Test-First (NON-NEGOTIABLE) -->
-[PRINCIPLE_3_DESCRIPTION]
-<!-- Example: TDD mandatory: Tests written → User approved → Tests fail → Then implement; Red-Green-Refactor cycle strictly enforced -->
+### III. Accessible, Responsive Interaction
+All controls MUST be keyboard operable, focus indicators MUST remain visible,
+and a high-contrast mode MUST be available. The interface MUST remain usable
+and responsive with at least 50 queued items, progress rendering MUST be
+throttled, and object URLs created for preview or export MUST be revoked when no
+longer needed. Accessibility and performance are release gates, not polish work.
 
-### [PRINCIPLE_4_NAME]
-<!-- Example: IV. Integration Testing -->
-[PRINCIPLE_4_DESCRIPTION]
-<!-- Example: Focus areas requiring integration tests: New library contract tests, Contract changes, Inter-service communication, Shared schemas -->
+### IV. Deterministic Typed Data Contracts
+Every scraped or derived field MUST use a typed container that preserves raw
+text, normalized typed values, and parse status. Schema registry entries MUST
+include stable identifiers, export ordering, and official Form 5500 location
+references with instructions year. Exports MUST have stable column order, stable
+row order, and deterministic duplicate-year selection rules. If extraction is
+stubbed, the stub MUST still emit valid typed containers and predictable output.
 
-### [PRINCIPLE_5_NAME]
-<!-- Example: V. Observability, VI. Versioning & Breaking Changes, VII. Simplicity -->
-[PRINCIPLE_5_DESCRIPTION]
-<!-- Example: Text I/O ensures debuggability; Structured logging required; Or: MAJOR.MINOR.BUILD format; Or: Start simple, YAGNI principles -->
+### V. Release Discipline & Feature Isolation
+Versioning MUST follow semantic versioning with baseline `v0.7.0`, and the
+application footer plus exported filenames MUST embed the version string. Git
+workflow MUST use one feature per branch named `001-...`, `002-...`, and so on,
+with squash merges and release tags `v0.7.x`. Specifications, plans, and task
+lists MUST isolate user-visible features into independently testable increments,
+and every change MUST preserve the single-file release artifact.
 
-## [SECTION_2_NAME]
-<!-- Example: Additional Constraints, Security Requirements, Performance Standards, etc. -->
+## Operational Constraints
 
-[SECTION_2_CONTENT]
-<!-- Example: Technology stack requirements, compliance standards, deployment policies, etc. -->
+- The project scope for the current milestone is limited to:
+  - ingestion UI covering local PDF, drag-and-drop PDF, pasted URLs, and EFAST
+    CSV import
+  - an "All years" aggregation table with deterministic CSV export
+- Plain DOM manipulation is the default implementation model; no framework or
+  server runtime may be introduced unless the constitution is amended.
+- Queue state, extracted filing objects, schema registry entries, and UI
+  settings MUST live in a single in-memory state store.
+- Field definitions MUST include location references consistent with official
+  Form 5500 or schedule line-item documentation such as `Form 5500 Part II Line 8a`
+  or `Schedule SB Line 14`.
+- Testing MUST cover CSV quoting/escaping, deterministic sorting and preferred
+  filing selection, FieldValue normalization, and EFAST CSV ingestion robustness.
 
-## [SECTION_3_NAME]
-<!-- Example: Development Workflow, Review Process, Quality Gates, etc. -->
+## Delivery Workflow
 
-[SECTION_3_CONTENT]
-<!-- Example: Code review requirements, testing gates, deployment approval process, etc. -->
+- Each feature specification MUST include a clarify section that resolves
+  ambiguities by selecting sensible defaults unless a decision is genuinely
+  blocking.
+- Each implementation plan MUST perform a constitution check against single-file
+  delivery, privacy, accessibility, responsiveness, deterministic export, and
+  typed-field requirements.
+- Each task list MUST include work for verification of accessibility, export
+  determinism, privacy-preserving behavior, and required automated tests when
+  those concerns apply to the feature.
+- Release verification MUST confirm that `/dist` contains exactly one
+  distributable HTML file for the target version.
 
 ## Governance
-<!-- Example: Constitution supersedes all other practices; Amendments require documentation, approval, migration plan -->
 
-[GOVERNANCE_RULES]
-<!-- Example: All PRs/reviews must verify compliance; Complexity must be justified; Use [GUIDANCE_FILE] for runtime development guidance -->
+This constitution overrides conflicting local conventions for this repository.
+Amendments require updating this file, documenting the rationale, updating any
+affected Spec Kit templates, and recording the version change in the Sync Impact
+Report. Compliance review is mandatory during planning, implementation, and
+release validation. Versioning follows semantic rules: MAJOR for incompatible
+governance changes, MINOR for new principles or materially expanded obligations,
+and PATCH for clarifications that do not change project duties.
 
-**Version**: [CONSTITUTION_VERSION] | **Ratified**: [RATIFICATION_DATE] | **Last Amended**: [LAST_AMENDED_DATE]
-<!-- Example: Version: 2.1.1 | Ratified: 2025-06-13 | Last Amended: 2025-07-16 -->
+**Version**: 1.0.0 | **Ratified**: 2026-03-31 | **Last Amended**: 2026-03-31

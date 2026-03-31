@@ -5,6 +5,16 @@
 **Status**: Draft  
 **Input**: User description: "$ARGUMENTS"
 
+## Clarifications Applied
+
+<!--
+  ACTION REQUIRED: Resolve ambiguous choices here with sensible defaults.
+  Use this section to record defaults selected during kickoff so later planning
+  and implementation do not depend on unresolved assumptions.
+-->
+
+- [Clarification/default chosen for this feature]
+
 ## User Scenarios & Testing *(mandatory)*
 
 <!--
@@ -74,6 +84,14 @@
 
 - What happens when [boundary condition]?
 - How does system handle [error scenario]?
+
+## Constitution Alignment *(mandatory)*
+
+- Single-file delivery impact: [How this feature preserves one self-contained
+  HTML artifact]
+- Privacy impact: [How this feature avoids transmitting or persisting contents]
+- Accessibility impact: [Keyboard, focus, contrast considerations]
+- Determinism impact: [Stable ordering, duplicate handling, typed-field effects]
 
 ## Requirements *(mandatory)*
 

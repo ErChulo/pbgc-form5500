@@ -1,0 +1,1894 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Form 5500 Ingestor v0.7.0</title>
+    <style>
+:root {
+  --bg: #f2efe8;
+  --panel: #fffdf9;
+  --panel-border: #c9c1b4;
+  --ink: #172021;
+  --muted: #526165;
+  --accent: #9f2f19;
+  --accent-soft: #f6d7cf;
+  --focus: #005fcc;
+  --warn: #8a4200;
+  --warn-bg: #fff1df;
+  --ok-bg: #e3f6ea;
+  --shadow: 0 12px 36px rgba(23, 32, 33, 0.08);
+  --radius: 16px;
+  --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
+  --sans: "Segoe UI", "Avenir Next", "Trebuchet MS", sans-serif;
+}
+
+body {
+  margin: 0;
+  background:
+    radial-gradient(circle at top left, rgba(159, 47, 25, 0.18), transparent 28rem),
+    linear-gradient(180deg, #f8f4ec 0%, #ede6da 100%);
+  color: var(--ink);
+  font-family: var(--sans);
+}
+
+body.high-contrast {
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-border: #111111;
+  --ink: #000000;
+  --muted: #1c1c1c;
+  --accent: #7b0000;
+  --accent-soft: #ffd9d9;
+  --focus: #0000ee;
+  --warn: #6b2f00;
+  --warn-bg: #fff3d1;
+  --ok-bg: #dbffe3;
+  background: #ffffff;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+button,
+input,
+textarea,
+summary,
+.buttonlike,
+.dropzone {
+  font: inherit;
+}
+
+button,
+.buttonlike {
+  appearance: none;
+  border: 1px solid var(--ink);
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  cursor: pointer;
+  padding: 0.72rem 1rem;
+  text-decoration: none;
+  transition: transform 120ms ease, background 120ms ease;
+}
+
+button.secondary {
+  background: transparent;
+  color: var(--ink);
+}
+
+button.small,
+.buttonlike.small {
+  padding: 0.35rem 0.7rem;
+  font-size: 0.92rem;
+}
+
+button:hover,
+.buttonlike:hover,
+summary:hover {
+  transform: translateY(-1px);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 3px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
+
+.app-shell {
+  width: min(1280px, calc(100% - 2rem));
+  margin: 0 auto;
+  padding: 1.2rem 0 2rem;
+}
+
+.hero,
+.panel,
+.card,
+.footer,
+.status-bar,
+.origin-chip {
+  border: 1px solid var(--panel-border);
+  background: var(--panel);
+  box-shadow: var(--shadow);
+}
+
+.hero,
+.panel,
+.card,
+.footer,
+.status-bar {
+  border-radius: var(--radius);
+}
+
+.hero {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  align-items: start;
+  padding: 1.4rem;
+  margin-bottom: 1rem;
+}
+
+.eyebrow {
+  margin: 0 0 0.45rem;
+  font-family: var(--mono);
+  font-size: 0.82rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+h1,
+h2 {
+  margin: 0;
+}
+
+.lede,
+.muted {
+  color: var(--muted);
+}
+
+.hero-actions,
+.actions-row,
+.stack-row,
+.summary-pills,
+.chooser-grid {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.hero-actions {
+  justify-content: flex-end;
+}
+
+.origin-chip {
+  border-radius: 999px;
+  padding: 0.6rem 0.9rem;
+  font-size: 0.92rem;
+}
+
+.toggle {
+  display: inline-flex;
+  gap: 0.45rem;
+  align-items: center;
+}
+
+.layout {
+  display: grid;
+  gap: 1rem;
+}
+
+.tabs-panel {
+  padding: 0.55rem;
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 0.5rem;
+}
+
+.tab {
+  background: transparent;
+  color: var(--ink);
+}
+
+.tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+.panel {
+  padding: 1rem;
+}
+
+.grid.two {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+.card {
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.dropzone {
+  min-height: 9rem;
+  display: grid;
+  place-items: center;
+  gap: 0.4rem;
+  text-align: center;
+  border: 2px dashed var(--panel-border);
+  border-radius: calc(var(--radius) - 4px);
+  background: linear-gradient(180deg, rgba(159, 47, 25, 0.04), transparent);
+}
+
+.dropzone.dragover {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+
+textarea,
+input[type="number"] {
+  width: 100%;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  background: #fff;
+  color: inherit;
+}
+
+.compact input {
+  width: 5rem;
+}
+
+.table-wrap {
+  overflow: auto;
+  border-radius: 14px;
+  border: 1px solid var(--panel-border);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 820px;
+}
+
+th,
+td {
+  padding: 0.72rem;
+  border-bottom: 1px solid #e5ded2;
+  vertical-align: top;
+  text-align: left;
+}
+
+th {
+  position: sticky;
+  top: 0;
+  background: #f8f4ec;
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.55rem;
+  font-size: 0.85rem;
+  background: var(--accent-soft);
+}
+
+.note {
+  border-radius: 14px;
+  padding: 0.8rem 0.9rem;
+  margin: 0.7rem 0 0;
+}
+
+.warning {
+  background: var(--warn-bg);
+  color: var(--warn);
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, white);
+}
+
+.ok {
+  background: var(--ok-bg);
+}
+
+.mono {
+  font-family: var(--mono);
+}
+
+.status-bar,
+.footer {
+  padding: 0.85rem 1rem;
+  margin-top: 1rem;
+}
+
+.footer {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  color: var(--muted);
+}
+
+.preview-shell {
+  width: min(90vw, 1100px);
+}
+
+#preview-frame {
+  width: 100%;
+  min-height: 72vh;
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  margin-top: 1rem;
+}
+
+dialog {
+  border: none;
+  padding: 0;
+  border-radius: var(--radius);
+}
+
+dialog::backdrop {
+  background: rgba(0, 0, 0, 0.48);
+}
+
+.empty {
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .app-shell {
+    width: min(100% - 1rem, 100%);
+  }
+
+  .hero,
+  .grid.two {
+    grid-template-columns: 1fr;
+    display: grid;
+  }
+
+  .hero-actions {
+    justify-content: start;
+  }
+
+  .footer {
+    justify-content: start;
+  }
+}
+
+    </style>
+  </head>
+  <body>
+    <div class="app-shell" id="app">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">PBGC Form 5500</p>
+          <h1>Form 5500 Ingestor</h1>
+          <p class="lede">
+            Ingest local PDFs, remote PDF links, and EFAST search CSV exports, then
+            assemble one deterministic all-years table.
+          </p>
+        </div>
+        <div class="hero-actions">
+          <label class="toggle">
+            <input id="high-contrast-toggle" type="checkbox">
+            <span>High contrast</span>
+          </label>
+          <div class="origin-chip" id="origin-chip"></div>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel tabs-panel">
+          <div class="tabs" role="tablist" aria-label="Application sections">
+            <button id="tab-ingestion" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-ingestion">Ingestion</button>
+            <button id="tab-all-years" class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-all-years">All years</button>
+          </div>
+        </section>
+
+        <section id="panel-ingestion" class="panel tab-panel active" role="tabpanel" aria-labelledby="tab-ingestion">
+          <div class="grid two">
+            <article class="card">
+              <h2>Mode 1: Local PDF files</h2>
+              <p class="muted">Select one or more Form 5500 PDF files from your device.</p>
+              <label class="buttonlike" for="local-pdf-input">Choose PDF files</label>
+              <input id="local-pdf-input" type="file" accept=".pdf,application/pdf" multiple class="sr-only">
+            </article>
+
+            <article class="card">
+              <h2>Mode 4: EFAST CSV upload</h2>
+              <p class="muted">Upload a CSV export from the EFAST Form 5500 search website.</p>
+              <label class="buttonlike" for="csv-input">Choose CSV file</label>
+              <input id="csv-input" type="file" accept=".csv,text/csv" class="sr-only">
+            </article>
+          </div>
+
+          <article class="card">
+            <h2>Mode 2: Drag and drop</h2>
+            <p class="muted">Drop PDFs or an EFAST CSV file anywhere inside this target.</p>
+            <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop files here or press Enter to choose local PDF files">
+              <strong>Drop PDFs or CSV here</strong>
+              <span>Press Enter to open the local PDF picker.</span>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="stack-row">
+              <div>
+                <h2>Mode 3: Remote PDF links</h2>
+                <p class="muted">Paste one URL per line, add them to the queue, then download with a controlled concurrency.</p>
+              </div>
+              <label class="stack-row compact" for="download-concurrency">
+                <span>Concurrency</span>
+                <input id="download-concurrency" type="number" min="1" max="8" value="3">
+              </label>
+            </div>
+            <textarea id="url-input" rows="6" placeholder="https://example.org/filing-2023.pdf&#10;https://example.org/filing-2024.pdf"></textarea>
+            <div id="remote-origin-warning" class="note warning" hidden></div>
+            <div class="actions-row">
+              <button id="add-links-button" type="button">Add links to queue</button>
+              <button id="download-now-button" type="button" class="secondary">Download now</button>
+            </div>
+          </article>
+
+          <article class="card">
+            <div class="stack-row">
+              <div>
+                <h2>Unified queue</h2>
+                <p class="muted">All PDF, remote, and EFAST-derived items appear in one queue.</p>
+              </div>
+              <div id="queue-summary" class="summary-pills" aria-live="polite"></div>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>Ingest ID</th>
+                    <th>Source type</th>
+                    <th>Name</th>
+                    <th>Size</th>
+                    <th>Status</th>
+                    <th>Progress</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="queue-table-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+
+        <section id="panel-all-years" class="panel tab-panel" role="tabpanel" aria-labelledby="tab-all-years" hidden>
+          <article class="card">
+            <div class="stack-row all-years-head">
+              <div>
+                <h2>All years</h2>
+                <p class="muted">One row per plan year with deterministic duplicate-year selection.</p>
+              </div>
+              <div class="actions-row">
+                <button id="download-csv-button" type="button">Download CSV</button>
+                <button id="copy-csv-button" type="button" class="secondary">Copy CSV</button>
+              </div>
+            </div>
+            <details class="column-chooser">
+              <summary>Column chooser</summary>
+              <div id="column-chooser-list" class="chooser-grid"></div>
+            </details>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr id="all-years-head-row"></tr>
+                </thead>
+                <tbody id="all-years-body"></tbody>
+              </table>
+            </div>
+          </article>
+        </section>
+      </main>
+
+      <div id="app-status" class="status-bar" aria-live="polite"></div>
+
+      <footer class="footer">
+        <span>Version v0.7.0</span>
+        <span>Single-file browser build</span>
+        <span>Local-only processing</span>
+      </footer>
+    </div>
+
+    <dialog id="preview-dialog">
+      <form method="dialog" class="preview-shell">
+        <div class="stack-row">
+          <h2 id="preview-title">Preview</h2>
+          <button value="close" type="submit">Close</button>
+        </div>
+        <iframe id="preview-frame" title="PDF preview"></iframe>
+      </form>
+    </dialog>
+
+    <script>
+(function (global, factory) {
+  const api = factory();
+  if (typeof module !== "undefined" && module.exports) {
+    module.exports = api;
+  }
+  global.Form5500Core = api;
+})(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const VERSION = "0.7.0";
+
+  function normalizeHeaderKey(value) {
+    return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
+  }
+
+  function toText(value) {
+    return value == null ? "" : String(value).trim();
+  }
+
+  function quoteCsvCell(value) {
+    const text = value == null ? "" : String(value);
+    if (/[",\n]/.test(text)) {
+      return `"${text.replace(/"/g, "\"\"")}"`;
+    }
+    return text;
+  }
+
+  function parseCsv(text) {
+    const rows = [];
+    let row = [];
+    let current = "";
+    let inQuotes = false;
+
+    for (let index = 0; index < text.length; index += 1) {
+      const char = text[index];
+      const next = text[index + 1];
+
+      if (inQuotes) {
+        if (char === "\"" && next === "\"") {
+          current += "\"";
+          index += 1;
+        } else if (char === "\"") {
+          inQuotes = false;
+        } else {
+          current += char;
+        }
+        continue;
+      }
+
+      if (char === "\"") {
+        inQuotes = true;
+      } else if (char === ",") {
+        row.push(current);
+        current = "";
+      } else if (char === "\n") {
+        row.push(current);
+        rows.push(row);
+        row = [];
+        current = "";
+      } else if (char !== "\r") {
+        current += char;
+      }
+    }
+
+    row.push(current);
+    if (row.some((value) => value !== "") || rows.length === 0) {
+      rows.push(row);
+    }
+
+    return rows.filter((cells) => cells.some((cell) => cell.trim() !== ""));
+  }
+
+  function rowsToObjects(rows) {
+    if (!rows.length) {
+      return { headers: [], objects: [] };
+    }
+
+    const headers = rows[0].map((header, index) => (header && header.trim() ? header.trim() : `column_${index + 1}`));
+    const objects = rows.slice(1).map((cells) => {
+      const object = {};
+      headers.forEach((header, index) => {
+        object[header] = cells[index] == null ? "" : cells[index];
+      });
+      return object;
+    });
+    return { headers, objects };
+  }
+
+  function normalizeNumberString(rawText) {
+    const text = toText(rawText);
+    if (!text) {
+      return null;
+    }
+
+    let normalized = text.replace(/\$/g, "").replace(/,/g, "").replace(/\s+/g, "");
+    let negative = false;
+    if (/^\(.*\)$/.test(normalized)) {
+      negative = true;
+      normalized = normalized.slice(1, -1);
+    }
+    if (normalized.startsWith("-")) {
+      negative = true;
+      normalized = normalized.slice(1);
+    }
+
+    if (!/^\d*\.?\d+$/.test(normalized)) {
+      return null;
+    }
+
+    if (normalized.includes(".")) {
+      normalized = normalized.replace(/\.?0+$/, "");
+      if (normalized.endsWith(".")) {
+        normalized = normalized.slice(0, -1);
+      }
+    }
+
+    if (!normalized) {
+      return null;
+    }
+
+    return negative ? `-${normalized}` : normalized;
+  }
+
+  function parseDate(rawText) {
+    const text = toText(rawText);
+    if (!text) {
+      return null;
+    }
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      return text;
+    }
+
+    let match = text.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+    if (match) {
+      const [, month, day, year] = match;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    match = text.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+    if (match) {
+      const [, year, month, day] = match;
+      return `${year}-${month.padStart(2, "0")}-${day.padStart(2, "0")}`;
+    }
+
+    return null;
+  }
+
+  function normalizeFieldValue(rawText, valueType, options) {
+    const settings = options || {};
+    const text = rawText == null ? null : String(rawText).trim();
+    const base = {
+      rawText: text,
+      valueType,
+      valueText: null,
+      valueNumber: null,
+      valueDate: null,
+      valueBoolean: null,
+      valueCode: null,
+      parseStatus: "missing",
+      parseNotes: null
+    };
+
+    if (!text) {
+      return base;
+    }
+
+    if (valueType === "text") {
+      return { ...base, valueText: text, parseStatus: "parsed" };
+    }
+
+    if (valueType === "integer" || valueType === "decimal" || valueType === "currency") {
+      const valueNumber = normalizeNumberString(text);
+      if (!valueNumber || (valueType === "integer" && valueNumber.includes("."))) {
+        return { ...base, parseStatus: "failed", parseNotes: `Could not parse ${valueType}` };
+      }
+      return { ...base, valueNumber, parseStatus: "parsed" };
+    }
+
+    if (valueType === "percent") {
+      const stripped = text.replace(/%/g, "");
+      const valueNumber = normalizeNumberString(stripped);
+      if (!valueNumber) {
+        return { ...base, parseStatus: "failed", parseNotes: "Could not parse percent" };
+      }
+      const numeric = Number(valueNumber);
+      const fraction = text.includes("%") || Math.abs(numeric) > 1 ? numeric / 100 : numeric;
+      return {
+        ...base,
+        valueNumber: String(fraction).replace(/\.?0+$/, "").replace(/\.$/, ""),
+        parseStatus: "parsed",
+        parseNotes: "Percent values are normalized to fraction form."
+      };
+    }
+
+    if (valueType === "date") {
+      const valueDate = parseDate(text);
+      if (!valueDate) {
+        return { ...base, parseStatus: "failed", parseNotes: "Could not parse date" };
+      }
+      return { ...base, valueDate, parseStatus: "parsed" };
+    }
+
+    if (valueType === "boolean") {
+      const normalized = text.toLowerCase();
+      if (["true", "yes", "y", "1"].includes(normalized)) {
+        return { ...base, valueBoolean: true, parseStatus: "parsed" };
+      }
+      if (["false", "no", "n", "0"].includes(normalized)) {
+        return { ...base, valueBoolean: false, parseStatus: "parsed" };
+      }
+      return { ...base, parseStatus: "failed", parseNotes: "Could not parse boolean" };
+    }
+
+    if (valueType === "code") {
+      if (settings.codeList && settings.codeList.length && !settings.codeList.includes(text)) {
+        return { ...base, valueCode: text, parseStatus: "failed", parseNotes: "Code is not in the allowed list" };
+      }
+      return { ...base, valueCode: text, parseStatus: "parsed" };
+    }
+
+    return { ...base, valueText: text, parseStatus: "parsed" };
+  }
+
+  function inferDatesFromFilename(name) {
+    const text = toText(name);
+    if (!text) {
+      return { begin: null, end: null };
+    }
+
+    let match = text.match(/(20\d{2})[-_]?(\d{2})[-_]?(\d{2}).*?(20\d{2})[-_]?(\d{2})[-_]?(\d{2})/);
+    if (match) {
+      return {
+        begin: `${match[1]}-${match[2]}-${match[3]}`,
+        end: `${match[4]}-${match[5]}-${match[6]}`
+      };
+    }
+
+    match = text.match(/\b(20\d{2})\b/);
+    if (match) {
+      return {
+        begin: `${match[1]}-01-01`,
+        end: `${match[1]}-12-31`
+      };
+    }
+
+    return { begin: null, end: null };
+  }
+
+  function getDefaultSchemaRegistry() {
+    return [
+      {
+        fieldId: "planName",
+        name: "planName",
+        headerLabel: "planName",
+        dataType: "text",
+        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 1a", instructionsYear: 2024 },
+        exportGroup: "allYears",
+        exportOrder: 1
+      },
+      {
+        fieldId: "planNumber",
+        name: "planNumber",
+        headerLabel: "planNumber",
+        dataType: "code",
+        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 1b", instructionsYear: 2024 },
+        exportGroup: "allYears",
+        exportOrder: 2
+      },
+      {
+        fieldId: "sponsorEmployerIdentificationNumber",
+        name: "sponsorEmployerIdentificationNumber",
+        headerLabel: "sponsorEmployerIdentificationNumber",
+        dataType: "code",
+        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 2b", instructionsYear: 2024 },
+        exportGroup: "allYears",
+        exportOrder: 3
+      },
+      {
+        fieldId: "planYearBeginDate",
+        name: "planYearBeginDate",
+        headerLabel: "planYearBeginDate",
+        dataType: "date",
+        locationRef: { form: "Form 5500", schedule: null, part: "Part I", line: "Line B", instructionsYear: 2024 },
+        exportGroup: "allYears",
+        exportOrder: 4
+      },
+      {
+        fieldId: "planYearEndDate",
+        name: "planYearEndDate",
+        headerLabel: "planYearEndDate",
+        dataType: "date",
+        locationRef: { form: "Form 5500", schedule: null, part: "Part I", line: "Line B", instructionsYear: 2024 },
+        exportGroup: "allYears",
+        exportOrder: 5
+      },
+      {
+        fieldId: "participantCountTotal",
+        name: "participantCountTotal",
+        headerLabel: "participantCountTotal",
+        dataType: "integer",
+        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 6g", instructionsYear: 2024 },
+        exportGroup: "allYears",
+        exportOrder: 50,
+        constraints: { min: 0 },
+        sourceMap: { notes: "Stubbed in v0.7.0 unless source metadata provides a value." }
+      }
+    ];
+  }
+
+  function createEmptyField(valueType) {
+    return normalizeFieldValue(null, valueType);
+  }
+
+  function getFieldText(field) {
+    if (!field) {
+      return "";
+    }
+    if (field.valueDate) {
+      return field.valueDate;
+    }
+    if (field.valueNumber != null) {
+      return field.valueNumber;
+    }
+    if (field.valueBoolean != null) {
+      return field.valueBoolean ? "true" : "false";
+    }
+    if (field.valueCode) {
+      return field.valueCode;
+    }
+    if (field.valueText) {
+      return field.valueText;
+    }
+    return field.rawText || "";
+  }
+
+  function createExtractedRecord(input) {
+    const source = input || {};
+    const schemaRegistry = source.schemaRegistry || getDefaultSchemaRegistry();
+    const fields = {};
+
+    schemaRegistry.forEach((definition) => {
+      const provided = source.fieldMap && source.fieldMap[definition.fieldId];
+      fields[definition.fieldId] = provided || createEmptyField(definition.dataType);
+    });
+
+    const extracted = {
+      ingestId: source.ingestId || "",
+      planName: source.planName || fields.planName || createEmptyField("text"),
+      planNumber: source.planNumber || fields.planNumber || createEmptyField("code"),
+      sponsorEmployerIdentificationNumber:
+        source.sponsorEmployerIdentificationNumber ||
+        fields.sponsorEmployerIdentificationNumber ||
+        createEmptyField("code"),
+      planYearBeginDate: source.planYearBeginDate || fields.planYearBeginDate || createEmptyField("date"),
+      planYearEndDate: source.planYearEndDate || fields.planYearEndDate || createEmptyField("date"),
+      filingKind: source.filingKind || createEmptyField("text"),
+      receivedTimestamp: source.receivedTimestamp || createEmptyField("text"),
+      fields,
+      metrics: { parsedFieldCount: 0, expectedFieldCount: 0 },
+      ingestionTimestamp: source.ingestionTimestamp || new Date().toISOString()
+    };
+
+    const fieldValues = [
+      extracted.planName,
+      extracted.planNumber,
+      extracted.sponsorEmployerIdentificationNumber,
+      extracted.planYearBeginDate,
+      extracted.planYearEndDate,
+      extracted.filingKind,
+      extracted.receivedTimestamp,
+      ...Object.values(fields)
+    ];
+
+    const parsedFieldCount = fieldValues.filter((field) => field && field.parseStatus === "parsed").length;
+    extracted.metrics = {
+      parsedFieldCount,
+      expectedFieldCount: fieldValues.length
+    };
+
+    return extracted;
+  }
+
+  function buildExtractedFromCsvRow(row, options) {
+    const source = options || {};
+    const schemaRegistry = source.schemaRegistry || getDefaultSchemaRegistry();
+    const begin = row.planYearBeginDate || row.planYearStart || "";
+    const end = row.planYearEndDate || row.planYearFinish || "";
+    const planYear = row.planYear || "";
+    const inferredYearDates = planYear && /^\d{4}$/.test(planYear)
+      ? { begin: `${planYear}-01-01`, end: `${planYear}-12-31` }
+      : { begin: "", end: "" };
+
+    const fieldMap = {
+      planName: normalizeFieldValue(row.planName, "text"),
+      planNumber: normalizeFieldValue(row.planNumber, "code"),
+      sponsorEmployerIdentificationNumber: normalizeFieldValue(row.sponsorEmployerIdentificationNumber, "code"),
+      planYearBeginDate: normalizeFieldValue(begin || inferredYearDates.begin, "date"),
+      planYearEndDate: normalizeFieldValue(end || inferredYearDates.end, "date"),
+      participantCountTotal: normalizeFieldValue(row.participantCountTotal, "integer")
+    };
+
+    return createExtractedRecord({
+      ingestId: source.ingestId,
+      schemaRegistry,
+      fieldMap,
+      planName: fieldMap.planName,
+      planNumber: fieldMap.planNumber,
+      sponsorEmployerIdentificationNumber: fieldMap.sponsorEmployerIdentificationNumber,
+      planYearBeginDate: fieldMap.planYearBeginDate,
+      planYearEndDate: fieldMap.planYearEndDate,
+      filingKind: normalizeFieldValue(row.filingKind || row.amendmentStatus || "original", "text"),
+      receivedTimestamp: normalizeFieldValue(row.receivedTimestamp || row.receivedDate || "", "text"),
+      ingestionTimestamp: source.ingestionTimestamp
+    });
+  }
+
+  function buildExtractedFromFilename(name, options) {
+    const source = options || {};
+    const inferredDates = inferDatesFromFilename(name);
+    return createExtractedRecord({
+      ingestId: source.ingestId,
+      planName: createEmptyField("text"),
+      planNumber: createEmptyField("code"),
+      sponsorEmployerIdentificationNumber: createEmptyField("code"),
+      planYearBeginDate: normalizeFieldValue(inferredDates.begin, "date"),
+      planYearEndDate: normalizeFieldValue(inferredDates.end, "date"),
+      filingKind: normalizeFieldValue("original", "text"),
+      receivedTimestamp: createEmptyField("text"),
+      schemaRegistry: source.schemaRegistry,
+      ingestionTimestamp: source.ingestionTimestamp
+    });
+  }
+
+  function parseDateTime(text) {
+    const value = toText(text);
+    if (!value) {
+      return null;
+    }
+    const timestamp = Date.parse(value);
+    return Number.isNaN(timestamp) ? null : timestamp;
+  }
+
+  function filingKindScore(field) {
+    const text = getFieldText(field).toLowerCase();
+    let score = 0;
+    if (text.includes("amended")) {
+      score += 2;
+    }
+    if (text.includes("final")) {
+      score += 1;
+    }
+    return score;
+  }
+
+  function comparePreferredFiling(a, b) {
+    const receivedA = parseDateTime(getFieldText(a.receivedTimestamp));
+    const receivedB = parseDateTime(getFieldText(b.receivedTimestamp));
+
+    if (receivedA != null || receivedB != null) {
+      if (receivedA == null) return -1;
+      if (receivedB == null) return 1;
+      if (receivedA !== receivedB) return receivedA > receivedB ? 1 : -1;
+    }
+
+    const kindScoreA = filingKindScore(a);
+    const kindScoreB = filingKindScore(b);
+    if (kindScoreA !== kindScoreB) {
+      return kindScoreA > kindScoreB ? 1 : -1;
+    }
+
+    const ingestionA = parseDateTime(a.ingestionTimestamp);
+    const ingestionB = parseDateTime(b.ingestionTimestamp);
+    if (ingestionA !== ingestionB) {
+      return ingestionA > ingestionB ? 1 : -1;
+    }
+
+    return String(a.ingestId || "").localeCompare(String(b.ingestId || ""));
+  }
+
+  function aggregateAllYears(extractedRecords, schemaRegistry) {
+    const registry = schemaRegistry || getDefaultSchemaRegistry();
+    const grouped = new Map();
+
+    extractedRecords.forEach((record) => {
+      const begin = getFieldText(record.planYearBeginDate);
+      const end = getFieldText(record.planYearEndDate);
+      const key = begin || end ? `${begin}|${end}` : `unknown|${record.ingestId}`;
+      const existing = grouped.get(key);
+      if (!existing || comparePreferredFiling(record, existing) > 0) {
+        grouped.set(key, record);
+      }
+    });
+
+    const records = Array.from(grouped.values()).sort((left, right) => {
+      const leftEnd = getFieldText(left.planYearEndDate) || "9999-12-31";
+      const rightEnd = getFieldText(right.planYearEndDate) || "9999-12-31";
+      if (leftEnd !== rightEnd) return leftEnd.localeCompare(rightEnd);
+      const leftBegin = getFieldText(left.planYearBeginDate) || "9999-12-31";
+      const rightBegin = getFieldText(right.planYearBeginDate) || "9999-12-31";
+      if (leftBegin !== rightBegin) return leftBegin.localeCompare(rightBegin);
+      return String(left.ingestId || "").localeCompare(String(right.ingestId || ""));
+    });
+
+    const mandatoryColumns = [
+      { key: "planName", label: "planName" },
+      { key: "planNumber", label: "planNumber" },
+      { key: "sponsorEmployerIdentificationNumber", label: "sponsorEmployerIdentificationNumber" },
+      { key: "planYearBeginDate", label: "planYearBeginDate" },
+      { key: "planYearEndDate", label: "planYearEndDate" },
+      { key: "filingKind", label: "filingKind" },
+      { key: "receivedTimestamp", label: "receivedTimestamp" },
+      { key: "extractionQuality", label: "extractionQuality" }
+    ];
+
+    const additionalColumns = registry
+      .filter((definition) => definition.exportGroup === "allYears")
+      .filter((definition) => !mandatoryColumns.some((column) => column.key === definition.name))
+      .sort((left, right) => left.exportOrder - right.exportOrder)
+      .map((definition) => ({ key: definition.name, label: definition.headerLabel || definition.name, fieldId: definition.fieldId }));
+
+    const rows = records.map((record) => {
+      const row = {
+        planName: getFieldText(record.planName),
+        planNumber: getFieldText(record.planNumber),
+        sponsorEmployerIdentificationNumber: getFieldText(record.sponsorEmployerIdentificationNumber),
+        planYearBeginDate: getFieldText(record.planYearBeginDate),
+        planYearEndDate: getFieldText(record.planYearEndDate),
+        filingKind: getFieldText(record.filingKind),
+        receivedTimestamp: getFieldText(record.receivedTimestamp),
+        extractionQuality: `${record.metrics.parsedFieldCount}/${record.metrics.expectedFieldCount}`
+      };
+
+      additionalColumns.forEach((column) => {
+        row[column.key] = getFieldText(record.fields[column.fieldId]);
+      });
+
+      return row;
+    });
+
+    return { rows, mandatoryColumns, additionalColumns };
+  }
+
+  function toCsv(columns, rows) {
+    const header = columns.map((column) => quoteCsvCell(column.label)).join(",");
+    const body = rows.map((row) => columns.map((column) => quoteCsvCell(row[column.key] || "")).join(","));
+    return [header, ...body].join("\n");
+  }
+
+  function createExportFileName(rows, version) {
+    if (!rows.length) {
+      return `form5500-all-years-v${version}.csv`;
+    }
+
+    const first = rows[0];
+    const planNumber = first.planNumber || "";
+    const ein = first.sponsorEmployerIdentificationNumber || "";
+    const years = rows
+      .map((row) => (row.planYearEndDate || "").slice(0, 4))
+      .filter(Boolean)
+      .sort();
+    const segments = ["form5500-all-years"];
+    if (planNumber) segments.push(planNumber);
+    if (ein) segments.push(ein);
+    if (years.length) {
+      segments.push(years[0]);
+      if (years[years.length - 1] !== years[0]) {
+        segments.push(years[years.length - 1]);
+      }
+    }
+    segments.push(`v${version}`);
+    return `${segments.join("-")}.csv`;
+  }
+
+  function detectEfastColumns(headers) {
+    const aliasMap = {
+      planName: ["planname", "nameoftheplan", "plan_name", "plannm"],
+      planNumber: ["plannumber", "pn", "planno", "plan_num"],
+      sponsorEmployerIdentificationNumber: ["sponsorein", "employeridentificationnumber", "ein", "sponsor_employer_identification_number"],
+      planYearBeginDate: ["planyearbegindate", "planyearstartdate", "plan_year_begin_date", "periodbegin", "yearbegin"],
+      planYearEndDate: ["planyearenddate", "planyearend", "plan_year_end_date", "periodend", "yearend"],
+      planYear: ["planyear", "year", "plan_year"],
+      filingKind: ["filingkind", "amendmentstatus", "amended", "filing_type"],
+      receivedTimestamp: ["receivedtimestamp", "receiveddate", "received", "filingreceiveddate"],
+      participantCountTotal: ["participantcounttotal", "totparticipants", "participantcount"],
+      pdfUrl: ["pdfurl", "pdf", "documentpdfurl", "filingpdfurl"],
+      detailUrl: ["detailurl", "filingdetailurl", "detail", "detailsurl"]
+    };
+
+    const normalizedHeaders = headers.map((header) => ({
+      raw: header,
+      normalized: normalizeHeaderKey(header)
+    }));
+
+    const mapping = {};
+    Object.entries(aliasMap).forEach(([key, aliases]) => {
+      const found = normalizedHeaders.find((header) => aliases.includes(header.normalized));
+      if (found) {
+        mapping[key] = found.raw;
+      }
+    });
+
+    return mapping;
+  }
+
+  function extractRemoteUrlFromObject(rowObject, mapping) {
+    const orderedKeys = [mapping.pdfUrl, mapping.detailUrl].filter(Boolean);
+    orderedKeys.push(...Object.keys(rowObject));
+
+    for (const key of orderedKeys) {
+      const value = toText(rowObject[key]);
+      if (!value) {
+        continue;
+      }
+      if (/^https?:\/\//i.test(value) && (/\.pdf(\?|#|$)/i.test(value) || normalizeHeaderKey(key).includes("pdf"))) {
+        return value;
+      }
+    }
+
+    return null;
+  }
+
+  function ingestEfastCsv(text, options) {
+    const source = options || {};
+    const parsed = rowsToObjects(parseCsv(text));
+    const mapping = detectEfastColumns(parsed.headers);
+    const records = parsed.objects.map((rowObject, index) => {
+      const canonical = {
+        planName: rowObject[mapping.planName || ""] || "",
+        planNumber: rowObject[mapping.planNumber || ""] || "",
+        sponsorEmployerIdentificationNumber: rowObject[mapping.sponsorEmployerIdentificationNumber || ""] || "",
+        planYearBeginDate: rowObject[mapping.planYearBeginDate || ""] || "",
+        planYearEndDate: rowObject[mapping.planYearEndDate || ""] || "",
+        planYear: rowObject[mapping.planYear || ""] || "",
+        filingKind: rowObject[mapping.filingKind || ""] || "",
+        receivedTimestamp: rowObject[mapping.receivedTimestamp || ""] || "",
+        participantCountTotal: rowObject[mapping.participantCountTotal || ""] || "",
+        pdfUrl: extractRemoteUrlFromObject(rowObject, mapping),
+        detailUrl: rowObject[mapping.detailUrl || ""] || ""
+      };
+
+      return {
+        rowNumber: index + 2,
+        sourceType: "remoteFromCsv",
+        displayName: canonical.planName || `EFAST row ${index + 2}`,
+        metadata: canonical,
+        originalRow: rowObject,
+        remoteUrl: canonical.pdfUrl || null
+      };
+    });
+
+    return { headers: parsed.headers, mapping, records, sourceName: source.sourceName || "uploaded.csv" };
+  }
+
+  return {
+    VERSION,
+    aggregateAllYears,
+    buildExtractedFromCsvRow,
+    buildExtractedFromFilename,
+    comparePreferredFiling,
+    createExportFileName,
+    detectEfastColumns,
+    getDefaultSchemaRegistry,
+    getFieldText,
+    ingestEfastCsv,
+    normalizeFieldValue,
+    parseCsv,
+    quoteCsvCell,
+    toCsv
+  };
+});
+
+
+(function () {
+  const core = window.Form5500Core;
+  const schemaRegistry = core.getDefaultSchemaRegistry();
+  const mandatoryColumnKeys = [
+    "planName",
+    "planNumber",
+    "sponsorEmployerIdentificationNumber",
+    "planYearBeginDate",
+    "planYearEndDate",
+    "filingKind",
+    "receivedTimestamp",
+    "extractionQuality"
+  ];
+
+  const state = {
+    queueItems: [],
+    extractedById: {},
+    schemaRegistry,
+    settings: {
+      highContrast: false,
+      visibleAdditionalColumns: schemaRegistry
+        .filter((field) => field.exportGroup === "allYears")
+        .filter((field) => !mandatoryColumnKeys.includes(field.name))
+        .map((field) => field.name)
+    },
+    previewUrl: null,
+    idCounter: 0,
+    downloadManager: {
+      concurrency: 3,
+      activeCount: 0
+    },
+    renderQueued: false
+  };
+
+  const elements = {
+    tabIngestion: document.getElementById("tab-ingestion"),
+    tabAllYears: document.getElementById("tab-all-years"),
+    panelIngestion: document.getElementById("panel-ingestion"),
+    panelAllYears: document.getElementById("panel-all-years"),
+    localPdfInput: document.getElementById("local-pdf-input"),
+    csvInput: document.getElementById("csv-input"),
+    dropzone: document.getElementById("dropzone"),
+    urlInput: document.getElementById("url-input"),
+    addLinksButton: document.getElementById("add-links-button"),
+    downloadNowButton: document.getElementById("download-now-button"),
+    downloadConcurrency: document.getElementById("download-concurrency"),
+    queueSummary: document.getElementById("queue-summary"),
+    queueTableBody: document.getElementById("queue-table-body"),
+    allYearsHeadRow: document.getElementById("all-years-head-row"),
+    allYearsBody: document.getElementById("all-years-body"),
+    downloadCsvButton: document.getElementById("download-csv-button"),
+    copyCsvButton: document.getElementById("copy-csv-button"),
+    columnChooserList: document.getElementById("column-chooser-list"),
+    status: document.getElementById("app-status"),
+    highContrastToggle: document.getElementById("high-contrast-toggle"),
+    remoteOriginWarning: document.getElementById("remote-origin-warning"),
+    previewDialog: document.getElementById("preview-dialog"),
+    previewFrame: document.getElementById("preview-frame"),
+    previewTitle: document.getElementById("preview-title"),
+    originChip: document.getElementById("origin-chip")
+  };
+
+  function nextIngestId() {
+    state.idCounter += 1;
+    return `ing-${String(state.idCounter).padStart(4, "0")}`;
+  }
+
+  function setStatus(message, kind) {
+    elements.status.textContent = message;
+    elements.status.className = `status-bar${kind ? ` ${kind}` : ""}`;
+  }
+
+  function scheduleRender() {
+    if (state.renderQueued) {
+      return;
+    }
+    state.renderQueued = true;
+    requestAnimationFrame(() => {
+      state.renderQueued = false;
+      render();
+    });
+  }
+
+  function sanitizeHtml(text) {
+    return String(text || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;");
+  }
+
+  function formatBytes(size) {
+    if (!size && size !== 0) {
+      return "Unknown";
+    }
+    if (size < 1024) return `${size} B`;
+    if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+    return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function createQueueItem(input) {
+    const item = {
+      id: nextIngestId(),
+      sourceType: input.sourceType,
+      displayName: input.displayName || input.fileName || input.remoteUrl || "Untitled",
+      fileName: input.fileName || input.displayName || "",
+      size: input.size == null ? null : input.size,
+      status: input.status || "queued",
+      progress: input.progress || 0,
+      remoteUrl: input.remoteUrl || null,
+      detailUrl: input.detailUrl || null,
+      blob: input.blob || null,
+      metadata: input.metadata || null,
+      originalRow: input.originalRow || null,
+      errorClass: input.errorClass || null,
+      errorMessage: input.errorMessage || null,
+      ingestionTimestamp: new Date().toISOString(),
+      previewName: input.previewName || input.displayName || input.fileName || "Preview",
+      abortController: null
+    };
+    state.queueItems.push(item);
+    syncExtractedForItem(item);
+    return item;
+  }
+
+  function syncExtractedForItem(item) {
+    if (item.metadata) {
+      state.extractedById[item.id] = core.buildExtractedFromCsvRow(item.metadata, {
+        ingestId: item.id,
+        ingestionTimestamp: item.ingestionTimestamp,
+        schemaRegistry: state.schemaRegistry
+      });
+      return;
+    }
+
+    const nameSource = item.fileName || item.displayName || item.remoteUrl || "";
+    state.extractedById[item.id] = core.buildExtractedFromFilename(nameSource, {
+      ingestId: item.id,
+      ingestionTimestamp: item.ingestionTimestamp,
+      schemaRegistry: state.schemaRegistry
+    });
+  }
+
+  function removeItem(itemId) {
+    const index = state.queueItems.findIndex((item) => item.id === itemId);
+    if (index === -1) {
+      return;
+    }
+    const [item] = state.queueItems.splice(index, 1);
+    if (item.abortController) {
+      item.abortController.abort();
+    }
+    if (item.previewObjectUrl) {
+      URL.revokeObjectURL(item.previewObjectUrl);
+    }
+    delete state.extractedById[itemId];
+    scheduleRender();
+  }
+
+  function setActiveTab(tabName) {
+    const showAllYears = tabName === "all-years";
+    elements.tabIngestion.classList.toggle("active", !showAllYears);
+    elements.tabAllYears.classList.toggle("active", showAllYears);
+    elements.tabIngestion.setAttribute("aria-selected", String(!showAllYears));
+    elements.tabAllYears.setAttribute("aria-selected", String(showAllYears));
+    elements.panelIngestion.hidden = showAllYears;
+    elements.panelAllYears.hidden = !showAllYears;
+    elements.panelIngestion.classList.toggle("active", !showAllYears);
+    elements.panelAllYears.classList.toggle("active", showAllYears);
+  }
+
+  function openPreview(itemId) {
+    const item = state.queueItems.find((entry) => entry.id === itemId);
+    if (!item || !item.blob) {
+      setStatus("Preview is only available for items with a PDF blob.", "warning");
+      return;
+    }
+
+    closePreview();
+    state.previewUrl = URL.createObjectURL(item.blob);
+    elements.previewFrame.src = state.previewUrl;
+    elements.previewTitle.textContent = `Preview: ${item.previewName}`;
+    if (typeof elements.previewDialog.showModal === "function") {
+      elements.previewDialog.showModal();
+    }
+  }
+
+  function closePreview() {
+    elements.previewFrame.removeAttribute("src");
+    if (state.previewUrl) {
+      URL.revokeObjectURL(state.previewUrl);
+      state.previewUrl = null;
+    }
+    if (elements.previewDialog.open) {
+      elements.previewDialog.close();
+    }
+  }
+
+  async function handleLocalPdfFiles(fileList) {
+    const files = Array.from(fileList).filter((file) => /\.pdf$/i.test(file.name) || file.type === "application/pdf");
+    files.forEach((file) => {
+      createQueueItem({
+        sourceType: "localPdf",
+        displayName: file.name,
+        fileName: file.name,
+        size: file.size,
+        status: "ready",
+        blob: file,
+        previewName: file.name
+      });
+    });
+    if (files.length) {
+      setStatus(`Added ${files.length} local PDF file${files.length === 1 ? "" : "s"} to the queue.`, "ok");
+      scheduleRender();
+    }
+  }
+
+  async function handleCsvFiles(fileList) {
+    const files = Array.from(fileList).filter((file) => /\.csv$/i.test(file.name) || file.type.includes("csv"));
+    for (const file of files) {
+      const text = await file.text();
+      const ingested = core.ingestEfastCsv(text, { sourceName: file.name });
+      ingested.records.forEach((record) => {
+        createQueueItem({
+          sourceType: "remoteFromCsv",
+          displayName: record.displayName,
+          fileName: record.remoteUrl ? record.remoteUrl.split("/").pop() || record.displayName : record.displayName,
+          status: record.remoteUrl ? "queued" : "metadata-only",
+          remoteUrl: record.remoteUrl,
+          detailUrl: record.metadata.detailUrl || null,
+          metadata: record.metadata,
+          originalRow: record.originalRow,
+          previewName: record.displayName
+        });
+      });
+      setStatus(
+        `Imported ${ingested.records.length} EFAST row${ingested.records.length === 1 ? "" : "s"} from ${file.name}.`,
+        "ok"
+      );
+    }
+    scheduleRender();
+  }
+
+  function addRemoteLinks() {
+    const lines = elements.urlInput.value
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    lines.forEach((line) => {
+      const url = line;
+      let displayName = url;
+      try {
+        displayName = decodeURIComponent(new URL(url).pathname.split("/").pop() || url);
+      } catch (_error) {
+        displayName = url;
+      }
+      createQueueItem({
+        sourceType: "remoteUrl",
+        displayName,
+        fileName: displayName,
+        status: "queued",
+        remoteUrl: url,
+        previewName: displayName
+      });
+    });
+
+    if (lines.length) {
+      elements.urlInput.value = "";
+      setStatus(`Queued ${lines.length} remote URL${lines.length === 1 ? "" : "s"}.`, "ok");
+      scheduleRender();
+    }
+  }
+
+  function classifyResponseError(response, url) {
+    if (response.status < 200 || response.status >= 300) {
+      return {
+        errorClass: "http",
+        errorMessage: `Remote server responded with HTTP ${response.status} for ${url}.`
+      };
+    }
+    return null;
+  }
+
+  function isLikelyPdf(bytes) {
+    if (!bytes || bytes.length < 4) {
+      return false;
+    }
+    return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
+  }
+
+  async function downloadItem(item) {
+    if (!item.remoteUrl) {
+      return;
+    }
+
+    if (window.location.protocol === "file:") {
+      item.status = "error";
+      item.errorClass = "fileOriginRestricted";
+      item.errorMessage =
+        "Remote downloads are blocked when the app is opened from file://. Serve the HTML over HTTP(S), or manually download the PDF and drag it into the app.";
+      scheduleRender();
+      return;
+    }
+
+    item.status = "downloading";
+    item.progress = 0;
+    item.errorClass = null;
+    item.errorMessage = null;
+    item.abortController = new AbortController();
+    scheduleRender();
+
+    try {
+      const response = await fetch(item.remoteUrl, { signal: item.abortController.signal });
+      const responseError = classifyResponseError(response, item.remoteUrl);
+      if (responseError) {
+        item.status = "error";
+        item.errorClass = responseError.errorClass;
+        item.errorMessage = responseError.errorMessage;
+        return;
+      }
+
+      const contentType = response.headers.get("content-type") || "";
+      const contentLength = Number(response.headers.get("content-length")) || 0;
+      const reader = response.body && response.body.getReader ? response.body.getReader() : null;
+      const chunks = [];
+      let received = 0;
+
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          chunks.push(value);
+          received += value.byteLength;
+          item.progress = contentLength ? Math.min(100, Math.round((received / contentLength) * 100)) : 0;
+          scheduleRender();
+        }
+      } else {
+        const buffer = await response.arrayBuffer();
+        chunks.push(new Uint8Array(buffer));
+        received = buffer.byteLength;
+      }
+
+      const bytes = new Uint8Array(received);
+      let offset = 0;
+      chunks.forEach((chunk) => {
+        bytes.set(chunk, offset);
+        offset += chunk.byteLength;
+      });
+
+      const looksLikePdf = /pdf/i.test(contentType) || /\.pdf(\?|#|$)/i.test(item.remoteUrl) || isLikelyPdf(bytes);
+      if (!looksLikePdf) {
+        item.status = "error";
+        item.errorClass = "notPdf";
+        item.errorMessage = "Downloaded response does not appear to be a PDF.";
+        return;
+      }
+
+      const blob = new Blob([bytes], { type: "application/pdf" });
+      item.blob = blob;
+      item.size = blob.size;
+      item.status = "ready";
+      item.progress = 100;
+      item.fileName = item.fileName || (new URL(item.remoteUrl).pathname.split("/").pop() || "downloaded.pdf");
+
+      if (!item.metadata) {
+        syncExtractedForItem(item);
+      }
+    } catch (error) {
+      if (error && error.name === "AbortError") {
+        item.status = "canceled";
+        item.errorClass = "canceled";
+        item.errorMessage = "Download canceled by user.";
+      } else if (error instanceof TypeError) {
+        item.status = "error";
+        item.errorClass = "network";
+        item.errorMessage =
+          "Network request failed. This can indicate a CORS restriction, offline connection, or a blocked remote host.";
+      } else {
+        item.status = "error";
+        item.errorClass = "network";
+        item.errorMessage = "Download failed before the PDF could be loaded.";
+      }
+    } finally {
+      item.abortController = null;
+      scheduleRender();
+      state.downloadManager.activeCount = Math.max(0, state.downloadManager.activeCount - 1);
+      pumpDownloads();
+    }
+  }
+
+  function pumpDownloads() {
+    while (state.downloadManager.activeCount < state.downloadManager.concurrency) {
+      const next = state.queueItems.find((item) => item.status === "queued" && item.remoteUrl);
+      if (!next) {
+        break;
+      }
+      state.downloadManager.activeCount += 1;
+      downloadItem(next);
+    }
+  }
+
+  function startDownloads() {
+    state.downloadManager.concurrency = clampConcurrency(elements.downloadConcurrency.value);
+    pumpDownloads();
+  }
+
+  function clampConcurrency(value) {
+    const number = Number(value) || 3;
+    return Math.min(8, Math.max(1, number));
+  }
+
+  function getSummaryCounts() {
+    return state.queueItems.reduce((counts, item) => {
+      counts[item.status] = (counts[item.status] || 0) + 1;
+      return counts;
+    }, {});
+  }
+
+  function renderQueue() {
+    const counts = getSummaryCounts();
+    elements.queueSummary.innerHTML = Object.keys(counts).length
+      ? Object.entries(counts)
+          .map(([status, count]) => `<span class="pill">${sanitizeHtml(status)}: ${count}</span>`)
+          .join("")
+      : `<span class="pill">queue empty</span>`;
+
+    if (!state.queueItems.length) {
+      elements.queueTableBody.innerHTML = `<tr><td colspan="7" class="empty">No queue items yet.</td></tr>`;
+      return;
+    }
+
+    elements.queueTableBody.innerHTML = state.queueItems
+      .map((item) => {
+        const actions = [];
+        if (item.blob) {
+          actions.push(`<button type="button" class="small" data-action="preview" data-id="${item.id}">Preview</button>`);
+        }
+        if (item.remoteUrl && item.status === "queued") {
+          actions.push(`<button type="button" class="small secondary" data-action="download" data-id="${item.id}">Download</button>`);
+        }
+        if (item.abortController) {
+          actions.push(`<button type="button" class="small secondary" data-action="cancel" data-id="${item.id}">Cancel</button>`);
+        }
+        if (item.status === "error" || item.status === "canceled") {
+          actions.push(`<button type="button" class="small secondary" data-action="retry" data-id="${item.id}">Retry</button>`);
+        }
+        if (item.remoteUrl) {
+          actions.push(`<a class="buttonlike small secondary" href="${sanitizeHtml(item.remoteUrl)}" target="_blank" rel="noreferrer">Open link</a>`);
+        } else if (item.detailUrl) {
+          actions.push(`<a class="buttonlike small secondary" href="${sanitizeHtml(item.detailUrl)}" target="_blank" rel="noreferrer">Open detail</a>`);
+        }
+        actions.push(`<button type="button" class="small secondary" data-action="remove" data-id="${item.id}">Remove</button>`);
+
+        const statusDetail = item.errorMessage
+          ? `<div class="muted">${sanitizeHtml(item.errorMessage)}</div>`
+          : item.status === "metadata-only"
+            ? `<div class="muted">No PDF URL in CSV row. Add a PDF manually or paste the missing link.</div>`
+            : "";
+
+        const metadataTag = item.metadata
+          ? `<div class="muted mono">CSV trace row</div>`
+          : "";
+
+        return `
+          <tr>
+            <td class="mono">${sanitizeHtml(item.id)}</td>
+            <td>${sanitizeHtml(item.sourceType)}</td>
+            <td>
+              <div>${sanitizeHtml(item.displayName)}</div>
+              ${metadataTag}
+            </td>
+            <td>${sanitizeHtml(formatBytes(item.size))}</td>
+            <td>
+              <div class="pill">${sanitizeHtml(item.status)}</div>
+              ${statusDetail}
+            </td>
+            <td>${item.progress ? `${item.progress}%` : item.status === "downloading" ? "Starting" : "-"}</td>
+            <td><div class="actions-row">${actions.join("")}</div></td>
+          </tr>
+        `;
+      })
+      .join("");
+  }
+
+  function getVisibleColumns() {
+    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const additional = aggregated.additionalColumns.filter((column) =>
+      state.settings.visibleAdditionalColumns.includes(column.key)
+    );
+    return [...aggregated.mandatoryColumns, ...additional];
+  }
+
+  function renderAllYears() {
+    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const visibleColumns = [
+      ...aggregated.mandatoryColumns,
+      ...aggregated.additionalColumns.filter((column) => state.settings.visibleAdditionalColumns.includes(column.key))
+    ];
+
+    elements.allYearsHeadRow.innerHTML = visibleColumns.map((column) => `<th>${sanitizeHtml(column.label)}</th>`).join("");
+
+    if (!aggregated.rows.length) {
+      elements.allYearsBody.innerHTML = `<tr><td colspan="${visibleColumns.length || 1}" class="empty">No extracted filings yet.</td></tr>`;
+    } else {
+      elements.allYearsBody.innerHTML = aggregated.rows
+        .map(
+          (row) =>
+            `<tr>${visibleColumns
+              .map((column) => `<td>${sanitizeHtml(row[column.key] || "")}</td>`)
+              .join("")}</tr>`
+        )
+        .join("");
+    }
+
+    elements.columnChooserList.innerHTML = aggregated.additionalColumns.length
+      ? aggregated.additionalColumns
+          .map((column) => {
+            const checked = state.settings.visibleAdditionalColumns.includes(column.key) ? "checked" : "";
+            return `
+              <label class="toggle">
+                <input type="checkbox" data-column-key="${sanitizeHtml(column.key)}" ${checked}>
+                <span>${sanitizeHtml(column.label)}</span>
+              </label>
+            `;
+          })
+          .join("")
+      : `<span class="muted">No optional columns are defined yet.</span>`;
+  }
+
+  function downloadBlob(filename, text) {
+    const blob = new Blob([text], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    setTimeout(() => URL.revokeObjectURL(url), 0);
+  }
+
+  function exportAllYears() {
+    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const columns = getVisibleColumns();
+    const csv = core.toCsv(columns, aggregated.rows);
+    const filename = core.createExportFileName(aggregated.rows, core.VERSION);
+    downloadBlob(filename, csv);
+    setStatus(`Downloaded ${filename}.`, "ok");
+  }
+
+  async function copyAllYears() {
+    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const columns = getVisibleColumns();
+    const csv = core.toCsv(columns, aggregated.rows);
+    try {
+      await navigator.clipboard.writeText(csv);
+      setStatus("CSV copied to clipboard.", "ok");
+    } catch (_error) {
+      setStatus("Clipboard write failed. Use Download CSV instead.", "warning");
+    }
+  }
+
+  function renderOriginNote() {
+    const fileOrigin = window.location.protocol === "file:";
+    elements.originChip.textContent = fileOrigin ? "Origin: file://" : `Origin: ${window.location.origin}`;
+    if (fileOrigin) {
+      elements.remoteOriginWarning.hidden = false;
+      elements.remoteOriginWarning.textContent =
+        "Remote downloads are blocked when opened from file:// in many browsers. Serve this HTML over HTTP(S), or manually download the PDF and drag it into the app.";
+    } else {
+      elements.remoteOriginWarning.hidden = true;
+      elements.remoteOriginWarning.textContent = "";
+    }
+  }
+
+  function render() {
+    renderQueue();
+    renderAllYears();
+    renderOriginNote();
+  }
+
+  function onQueueAction(event) {
+    const target = event.target;
+    if (!(target instanceof HTMLElement)) {
+      return;
+    }
+
+    const action = target.getAttribute("data-action");
+    const itemId = target.getAttribute("data-id");
+    if (!action || !itemId) {
+      return;
+    }
+
+    const item = state.queueItems.find((entry) => entry.id === itemId);
+    if (!item) {
+      return;
+    }
+
+    if (action === "preview") {
+      openPreview(itemId);
+    } else if (action === "remove") {
+      removeItem(itemId);
+    } else if (action === "cancel") {
+      if (item.abortController) {
+        item.abortController.abort();
+      }
+    } else if (action === "retry") {
+      item.status = "queued";
+      item.progress = 0;
+      item.errorClass = null;
+      item.errorMessage = null;
+      scheduleRender();
+    } else if (action === "download") {
+      pumpDownloads();
+    }
+  }
+
+  function handleDrop(files) {
+    const pdfFiles = [];
+    const csvFiles = [];
+    Array.from(files).forEach((file) => {
+      if (/\.csv$/i.test(file.name) || file.type.includes("csv")) {
+        csvFiles.push(file);
+      } else {
+        pdfFiles.push(file);
+      }
+    });
+
+    if (pdfFiles.length) {
+      handleLocalPdfFiles(pdfFiles);
+    }
+    if (csvFiles.length) {
+      handleCsvFiles(csvFiles);
+    }
+  }
+
+  function bindEvents() {
+    elements.tabIngestion.addEventListener("click", () => setActiveTab("ingestion"));
+    elements.tabAllYears.addEventListener("click", () => setActiveTab("all-years"));
+    elements.localPdfInput.addEventListener("change", (event) => handleLocalPdfFiles(event.target.files || []));
+    elements.csvInput.addEventListener("change", (event) => handleCsvFiles(event.target.files || []));
+    elements.addLinksButton.addEventListener("click", addRemoteLinks);
+    elements.downloadNowButton.addEventListener("click", startDownloads);
+    elements.downloadConcurrency.addEventListener("change", () => {
+      elements.downloadConcurrency.value = String(clampConcurrency(elements.downloadConcurrency.value));
+      state.downloadManager.concurrency = clampConcurrency(elements.downloadConcurrency.value);
+    });
+    elements.queueTableBody.addEventListener("click", onQueueAction);
+    elements.downloadCsvButton.addEventListener("click", exportAllYears);
+    elements.copyCsvButton.addEventListener("click", copyAllYears);
+    elements.highContrastToggle.addEventListener("change", (event) => {
+      state.settings.highContrast = Boolean(event.target.checked);
+      document.body.classList.toggle("high-contrast", state.settings.highContrast);
+    });
+    elements.columnChooserList.addEventListener("change", (event) => {
+      const target = event.target;
+      if (!(target instanceof HTMLInputElement)) {
+        return;
+      }
+      const key = target.getAttribute("data-column-key");
+      if (!key) {
+        return;
+      }
+      if (target.checked) {
+        if (!state.settings.visibleAdditionalColumns.includes(key)) {
+          state.settings.visibleAdditionalColumns.push(key);
+        }
+      } else {
+        state.settings.visibleAdditionalColumns = state.settings.visibleAdditionalColumns.filter((value) => value !== key);
+      }
+      scheduleRender();
+    });
+    elements.dropzone.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      elements.dropzone.classList.add("dragover");
+    });
+    elements.dropzone.addEventListener("dragleave", () => {
+      elements.dropzone.classList.remove("dragover");
+    });
+    elements.dropzone.addEventListener("drop", (event) => {
+      event.preventDefault();
+      elements.dropzone.classList.remove("dragover");
+      handleDrop(event.dataTransfer ? event.dataTransfer.files : []);
+    });
+    elements.dropzone.addEventListener("keydown", (event) => {
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        elements.localPdfInput.click();
+      }
+    });
+    elements.previewDialog.addEventListener("close", closePreview);
+  }
+
+  bindEvents();
+  render();
+})();
+
+    </script>
+  </body>
+</html>
