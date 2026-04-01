@@ -247,8 +247,44 @@ test("schedule i numeric rows satisfy canonical asset fields and numeric validat
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "265000");
   assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "85");
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.825");
-  assert.equal(extracted.metrics.filingNumericSufficiency, "partial");
+  assert.equal(extracted.metrics.filingNumericSufficiency, "sufficient");
   assert.ok(extracted.metrics.validatedNumericFieldCount >= 8);
+});
+
+test("participant line variants with 6a and 6g style codes are parsed", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "a Total number of participants at the beginning of the plan year 6a 410",
+    "d Retired or separated participants receiving benefits 6d 39",
+    "e Other retired or separated participants entitled to future benefits 6e 28",
+    "f Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6f 3",
+    "g Total number of participants 6g 480"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1003",
+      ingestionTimestamp: "2026-04-01T00:00:00Z",
+      fileName: "variant-2024.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "410");
+  assert.equal(extracted.fields.retiredParticipantsReceivingBenefits.valueNumber, "39");
+  assert.equal(extracted.fields.separatedParticipantsEntitledToBenefits.valueNumber, "28");
+  assert.equal(extracted.fields.deceasedParticipantsBeneficiaries.valueNumber, "3");
+  assert.equal(extracted.fields.participantCountTotal.valueNumber, "480");
 });
 
 test("all-years aggregation carries expanded schema fields into exported rows", () => {

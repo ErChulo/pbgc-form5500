@@ -1728,7 +1728,7 @@ dialog::backdrop {
   }
 
   function findTrailingLineCodeNumber(joinedText, labelPattern, lineCode) {
-    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
+    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
     if (!match) {
       return null;
     }
@@ -1740,8 +1740,18 @@ dialog::backdrop {
     };
   }
 
+  function findFirstTrailingLineCodeNumber(joinedText, variants) {
+    for (const variant of variants) {
+      const match = findTrailingLineCodeNumber(joinedText, variant.labelPattern, variant.lineCode);
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  }
+
   function findTrailingLineCodeValue(joinedText, labelPattern, lineCode, valuePattern) {
-    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
+    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
     if (!match) {
       return null;
     }
@@ -1825,35 +1835,47 @@ dialog::backdrop {
     rawMatches.businessCode =
       summaryMatches.businessCode ||
       findSingleValue(prepared.joinedText, ["business code \\(see instructions\\)", "business code"], "\\d{6}");
-    rawMatches.participantCountBeginningOfYear = findTrailingLineCodeNumber(
+    rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
+      { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
+    ]) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
+    rawMatches.retiredParticipantsReceivingBenefits = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "Retired or separated participants receiving benefits", lineCode: "6b" },
+      { labelPattern: "Retired or separated participants receiving benefits", lineCode: "6d" }
+    ]) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
+    rawMatches.separatedParticipantsEntitledToBenefits = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      {
+        labelPattern: "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+        lineCode: "6c"
+      },
+      {
+        labelPattern: "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+        lineCode: "6e"
+      }
+    ]) || findSingleValue(
       prepared.joinedText,
-      "5\\s+Total number of participants at the beginning of the plan year",
-      "5"
-    ) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
-    rawMatches.retiredParticipantsReceivingBenefits = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Retired or separated participants receiving benefits",
-      "6b"
-    ) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
-    rawMatches.separatedParticipantsEntitledToBenefits = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
-      "6c"
-    ) || findSingleValue(prepared.joinedText, ["separated participants entitled to future benefits"], "\\d[\\d,]*");
-    rawMatches.deceasedParticipantsBeneficiaries = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
-      "6e"
-    ) || findSingleValue(
+      ["other retired or separated participants entitled to future benefits", "separated participants entitled to future benefits"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.deceasedParticipantsBeneficiaries = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      {
+        labelPattern: "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+        lineCode: "6e"
+      },
+      {
+        labelPattern: "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+        lineCode: "6f"
+      }
+    ]) || findSingleValue(
       prepared.joinedText,
       ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits"],
       "\\d[\\d,]*"
     );
-    rawMatches.participantCountTotal = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Total\\. Add lines 6d and 6e",
-      "6f"
-    ) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
+    rawMatches.participantCountTotal = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "Total\\. Add lines 6d and 6e", lineCode: "6f" },
+      { labelPattern: "Total number of participants", lineCode: "6g" },
+      { labelPattern: "Total\\. Add lines 6e and 6f", lineCode: "6g" }
+    ]) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
     rawMatches.assetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0);
     rawMatches.assetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1);
     rawMatches.liabilitiesBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0);
