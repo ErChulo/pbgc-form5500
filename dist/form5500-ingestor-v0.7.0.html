@@ -1620,20 +1620,22 @@ dialog::backdrop {
 
   function findScheduleLinePair(joinedText, lineCode, labelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?(?:\\s*%?)?\\)?";
-    const regex = new RegExp(
-      `(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`,
-      "i"
-    );
-    const match = joinedText.match(regex);
-    if (!match || !match[pairIndex + 1]) {
-      return null;
+    const patterns = [
+      new RegExp(`(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i"),
+      new RegExp(`(?:^|\\n)(?:${labelPattern})[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i")
+    ];
+    for (const regex of patterns) {
+      const match = joinedText.match(regex);
+      if (match && match[pairIndex + 1]) {
+        return {
+          value: sanitizeExtractedText(match[pairIndex + 1]),
+          sourceLabel: lineCode,
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+        };
+      }
     }
-    return {
-      value: sanitizeExtractedText(match[pairIndex + 1]),
-      sourceLabel: lineCode,
-      sourcePage: null,
-      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
-    };
+    return null;
   }
 
   function isNumericType(dataType) {

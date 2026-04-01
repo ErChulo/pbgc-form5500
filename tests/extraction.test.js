@@ -135,6 +135,42 @@ test("schedule h row-coded values are preferred over table-of-contents noise", (
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
 });
 
+test("schedule numeric rows parse when the label precedes the line code", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2022 and ending 12/31/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "Total assets (add all amounts in lines 1a through 1e) 1f 1,000,000 1,250,000",
+    "Total liabilities (add all amounts in lines 1g through 1j) 1k 100,000 120,000",
+    "Net assets available for plan benefits (subtract line 1k from line 1f) 1l 900,000 1,130,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000e",
+      ingestionTimestamp: "2026-04-01T00:00:00Z",
+      fileName: "northwind-2022-label-first.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.assetsBeginningOfYear.valueNumber, "1000000");
+  assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "1250000");
+  assert.equal(extracted.fields.liabilitiesBeginningOfYear.valueNumber, "100000");
+  assert.equal(extracted.fields.liabilitiesEndOfYear.valueNumber, "120000");
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "900000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
+});
+
 test("redacted schedule placeholders are treated as missing instead of parsed values", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",
