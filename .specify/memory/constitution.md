@@ -1,6 +1,6 @@
 <!--
 Sync Impact Report
-- Version change: template -> 1.0.0
+- Version change: 1.0.0 -> 1.0.1
 - Modified principles:
   - [PRINCIPLE_1_NAME] -> I. Single-File Browser Delivery
   - [PRINCIPLE_2_NAME] -> II. Local-Only Processing & Privacy
@@ -37,10 +37,12 @@ constitution violation.
 All file parsing, normalization, extraction, preview generation, and export
 logic MUST execute locally in the browser. The application MUST NOT transmit
 document contents anywhere, MUST NOT log document contents, and MUST persist
-only metadata unless the user explicitly exports data. Remote fetches are
-limited to user-supplied URLs and downloaded bytes MUST remain in memory only.
-When browser origin restrictions prevent remote downloads, the product MUST
-explain the restriction and direct the user to manual download plus drag-and-drop.
+only metadata unless the user explicitly exports data. Remote URLs may be stored
+as user-provided references, but the application MUST NOT programmatically fetch
+remote documents. Users MUST open and download remote files through normal
+browser navigation, then re-ingest them locally by drag-and-drop or file picker.
+The product MUST explain this workflow explicitly wherever remote references are
+accepted.
 
 ### III. Accessible, Responsive Interaction
 All controls MUST be keyboard operable, focus indicators MUST remain visible,
@@ -105,4 +107,4 @@ release validation. Versioning follows semantic rules: MAJOR for incompatible
 governance changes, MINOR for new principles or materially expanded obligations,
 and PATCH for clarifications that do not change project duties.
 
-**Version**: 1.0.0 | **Ratified**: 2026-03-31 | **Last Amended**: 2026-03-31
+**Version**: 1.0.1 | **Ratified**: 2026-03-31 | **Last Amended**: 2026-03-31

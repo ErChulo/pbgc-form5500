@@ -11,16 +11,12 @@
 ## Queue Item State Contract
 
 - New local PDF item enters the queue as `ready`.
-- New remote URL item enters the queue as `queued`.
-- New CSV-derived item enters as `queued` when a PDF URL exists, otherwise `metadata-only`.
-- Download transitions:
-  - `queued -> downloading -> ready`
-  - `queued -> downloading -> canceled`
-  - `queued -> downloading -> error`
-- Retry resets `error` or `canceled` back to `queued`.
+- New remote URL item enters the queue as `manual-download-required`.
+- New CSV-derived item enters as `manual-download-required` when a PDF URL exists, otherwise `metadata-only`.
+- Remote reference items do not transition through programmatic download states.
 
 ## User Messaging Contract
 
-- `file://` origin must show a global warning for remote downloads.
-- Failed remote items must show one explicit reason and a next-step hint.
+- The ingestion view must show a global warning that remote links are references only and must be downloaded manually.
+- Remote reference items must show one explicit next-step hint for manual download and local re-ingestion.
 - Metadata-only CSV rows must explain how to add a missing PDF manually.

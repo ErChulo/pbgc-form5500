@@ -6,6 +6,18 @@
   global.Form5500Core = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
   const VERSION = "0.7.0";
+  const historicalRegistryApi =
+    (typeof globalThis !== "undefined" && globalThis.Form5500HistoricalRegistry) ||
+    (typeof require === "function" ? require("./schema/historical-registry.js") : null);
+  const fieldMapperApi =
+    (typeof globalThis !== "undefined" && globalThis.Form5500FieldMapper) ||
+    (typeof require === "function" ? require("./extraction/field-mapper.js") : null);
+  const scheduleRouterApi =
+    (typeof globalThis !== "undefined" && globalThis.Form5500ScheduleRouter) ||
+    (typeof require === "function" ? require("./extraction/schedule-router.js") : null);
+  const qualityApi =
+    (typeof globalThis !== "undefined" && globalThis.Form5500ExtractionQuality) ||
+    (typeof require === "function" ? require("./extraction/quality.js") : null);
 
   function normalizeHeaderKey(value) {
     return String(value || "").toLowerCase().replace(/[^a-z0-9]+/g, "");
@@ -246,64 +258,10 @@
   }
 
   function getDefaultSchemaRegistry() {
-    return [
-      {
-        fieldId: "planName",
-        name: "planName",
-        headerLabel: "planName",
-        dataType: "text",
-        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 1a", instructionsYear: 2024 },
-        exportGroup: "allYears",
-        exportOrder: 1
-      },
-      {
-        fieldId: "planNumber",
-        name: "planNumber",
-        headerLabel: "planNumber",
-        dataType: "code",
-        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 1b", instructionsYear: 2024 },
-        exportGroup: "allYears",
-        exportOrder: 2
-      },
-      {
-        fieldId: "sponsorEmployerIdentificationNumber",
-        name: "sponsorEmployerIdentificationNumber",
-        headerLabel: "sponsorEmployerIdentificationNumber",
-        dataType: "code",
-        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 2b", instructionsYear: 2024 },
-        exportGroup: "allYears",
-        exportOrder: 3
-      },
-      {
-        fieldId: "planYearBeginDate",
-        name: "planYearBeginDate",
-        headerLabel: "planYearBeginDate",
-        dataType: "date",
-        locationRef: { form: "Form 5500", schedule: null, part: "Part I", line: "Line B", instructionsYear: 2024 },
-        exportGroup: "allYears",
-        exportOrder: 4
-      },
-      {
-        fieldId: "planYearEndDate",
-        name: "planYearEndDate",
-        headerLabel: "planYearEndDate",
-        dataType: "date",
-        locationRef: { form: "Form 5500", schedule: null, part: "Part I", line: "Line B", instructionsYear: 2024 },
-        exportGroup: "allYears",
-        exportOrder: 5
-      },
-      {
-        fieldId: "participantCountTotal",
-        name: "participantCountTotal",
-        headerLabel: "participantCountTotal",
-        dataType: "integer",
-        locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 6g", instructionsYear: 2024 },
-        exportGroup: "allYears",
-        exportOrder: 50,
-        constraints: { min: 0 },
-        sourceMap: { notes: "Stubbed in v0.7.0 unless source metadata provides a value." }
-      }
-    ];
+    if (historicalRegistryApi && typeof historicalRegistryApi.getBaseSchemaRegistry === "function") {
+      return historicalRegistryApi.getBaseSchemaRegistry();
+    }
+    return [];
   }
 
   function createEmptyField(valueType) {
@@ -356,7 +314,14 @@
       receivedTimestamp: source.receivedTimestamp || createEmptyField("text"),
       fields,
       metrics: { parsedFieldCount: 0, expectedFieldCount: 0 },
-      ingestionTimestamp: source.ingestionTimestamp || new Date().toISOString()
+      ingestionTimestamp: source.ingestionTimestamp || new Date().toISOString(),
+      extraction: source.extraction || {
+        evidence: [],
+        exceptions: [],
+        context: null,
+        sourceKind: "unknown",
+        ocr: null
+      }
     };
 
     const fieldValues = [
@@ -428,6 +393,70 @@
       schemaRegistry: source.schemaRegistry,
       ingestionTimestamp: source.ingestionTimestamp
     });
+  }
+
+  function buildExtractedFromPdfData(pdfData, options) {
+    const source = options || {};
+    const initialContext = scheduleRouterApi && typeof scheduleRouterApi.detectContext === "function"
+      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "")
+      : { filingYear: 2024, schedules: [] };
+    const schemaRegistry = source.schemaRegistry ||
+      (historicalRegistryApi && typeof historicalRegistryApi.getHistoricalSchemaRegistry === "function"
+        ? historicalRegistryApi.getHistoricalSchemaRegistry(initialContext.filingYear)
+        : getDefaultSchemaRegistry());
+    const mapped = fieldMapperApi && typeof fieldMapperApi.mapDocumentFields === "function"
+      ? fieldMapperApi.mapDocumentFields({
+          documentText: pdfData.documentText,
+          schemaRegistry,
+          normalizeFieldValue,
+          context: initialContext
+        })
+      : { fieldMap: {}, evidence: [], exceptions: [], filingKind: "original" };
+    const inferredDates = inferDatesFromFilename(source.fileName || "");
+
+    if (mapped.fieldMap.planYearBeginDate && mapped.fieldMap.planYearBeginDate.parseStatus !== "parsed" && inferredDates.begin) {
+      mapped.fieldMap.planYearBeginDate = normalizeFieldValue(inferredDates.begin, "date");
+    }
+    if (mapped.fieldMap.planYearEndDate && mapped.fieldMap.planYearEndDate.parseStatus !== "parsed" && inferredDates.end) {
+      mapped.fieldMap.planYearEndDate = normalizeFieldValue(inferredDates.end, "date");
+    }
+
+    const extracted = createExtractedRecord({
+      ingestId: source.ingestId,
+      schemaRegistry,
+      fieldMap: mapped.fieldMap,
+      planName: mapped.fieldMap.planName || createEmptyField("text"),
+      planNumber: mapped.fieldMap.planNumber || createEmptyField("code"),
+      sponsorEmployerIdentificationNumber:
+        mapped.fieldMap.sponsorEmployerIdentificationNumber || createEmptyField("code"),
+      planYearBeginDate: mapped.fieldMap.planYearBeginDate || createEmptyField("date"),
+      planYearEndDate: mapped.fieldMap.planYearEndDate || createEmptyField("date"),
+      filingKind: normalizeFieldValue(mapped.filingKind || "original", "text"),
+      receivedTimestamp: createEmptyField("text"),
+      ingestionTimestamp: source.ingestionTimestamp,
+      extraction: {
+        evidence: mapped.evidence || [],
+        exceptions: mapped.exceptions || [],
+        context: initialContext,
+        sourceKind: pdfData.textSource || "native",
+        ocr: source.ocr || null
+      }
+    });
+
+    if (qualityApi && typeof qualityApi.summarizeFieldMap === "function") {
+      extracted.metrics = qualityApi.summarizeFieldMap({
+        planName: extracted.planName,
+        planNumber: extracted.planNumber,
+        sponsorEmployerIdentificationNumber: extracted.sponsorEmployerIdentificationNumber,
+        planYearBeginDate: extracted.planYearBeginDate,
+        planYearEndDate: extracted.planYearEndDate,
+        filingKind: extracted.filingKind,
+        receivedTimestamp: extracted.receivedTimestamp,
+        ...extracted.fields
+      });
+    }
+
+    return extracted;
   }
 
   function parseDateTime(text) {
@@ -602,15 +631,25 @@
   }
 
   function extractRemoteUrlFromObject(rowObject, mapping) {
-    const orderedKeys = [mapping.pdfUrl, mapping.detailUrl].filter(Boolean);
+    const orderedKeys = [];
+    if (mapping.pdfUrl) {
+      orderedKeys.push(mapping.pdfUrl);
+    }
     orderedKeys.push(...Object.keys(rowObject));
 
     for (const key of orderedKeys) {
+      const normalizedKey = normalizeHeaderKey(key);
       const value = toText(rowObject[key]);
       if (!value) {
         continue;
       }
-      if (/^https?:\/\//i.test(value) && (/\.pdf(\?|#|$)/i.test(value) || normalizeHeaderKey(key).includes("pdf"))) {
+      const explicitPdfHeader =
+        normalizedKey.includes("pdf") ||
+        normalizedKey.includes("documentlinkpdf") ||
+        normalizedKey.includes("filingpdf");
+      const directPdfValue = /\.pdf(\?|#|$)/i.test(value);
+
+      if (/^https?:\/\//i.test(value) && (directPdfValue || explicitPdfHeader)) {
         return value;
       }
     }
@@ -655,6 +694,7 @@
     aggregateAllYears,
     buildExtractedFromCsvRow,
     buildExtractedFromFilename,
+    buildExtractedFromPdfData,
     comparePreferredFiling,
     createExportFileName,
     detectEfastColumns,

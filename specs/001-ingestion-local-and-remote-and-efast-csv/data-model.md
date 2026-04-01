@@ -18,13 +18,12 @@
 - `errorMessage`: user-facing guidance text
 - `ingestionTimestamp`: ISO timestamp for deterministic ordering and later duplicate handling
 
-## DownloadJob
+## RemoteReference
 
 - `queueItemId`: owning queue item identifier
-- `abortController`: in-flight cancel control
-- `contentLength`: expected byte count when remote response supplies it
-- `receivedBytes`: accumulated byte count
-- `validationState`: `pending | validPdf | invalidPdf`
+- `remoteUrl`: original user-provided link
+- `detailUrl`: optional non-PDF landing page reference from CSV
+- `guidanceState`: `manual-download-required | metadata-only`
 
 ## CsvRowMetadata
 
@@ -42,6 +41,6 @@
 
 ## Relationships
 
-- One `QueueItem` may own one `DownloadJob` while downloading.
+- One `QueueItem` may reference one `RemoteReference` object when it originated from a URL or CSV row.
 - One `QueueItem` may reference one `CsvRowMetadata` object.
 - Every `QueueItem` maps to one extracted record used by the All years feature.

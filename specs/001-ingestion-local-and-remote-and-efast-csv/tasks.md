@@ -34,10 +34,10 @@
 **Independent Test**: Add 5 remote URLs, download, cancel one, retry a failure.
 
 - [x] T012 [US2] Implement remote URL queue creation in /workspaces/pbgc-form5500/src/app.js
-- [x] T013 [US2] Implement concurrency-limited remote download manager in /workspaces/pbgc-form5500/src/app.js
-- [x] T014 [US2] Implement response validation and error classification in /workspaces/pbgc-form5500/src/app.js
-- [x] T015 [US2] Implement item-level actions for cancel, retry, remove, and open-link in /workspaces/pbgc-form5500/src/app.js
-- [x] T016 [US2] Implement explicit `file://` guidance for blocked remote downloads in /workspaces/pbgc-form5500/src/app.js
+- [x] T013 [US2] Implement manual-download guidance for remote reference items in /workspaces/pbgc-form5500/src/app.js
+- [x] T014 [US2] Implement Open link plus remove actions for remote reference items in /workspaces/pbgc-form5500/src/app.js
+- [x] T015 [US2] Remove programmatic remote fetch behavior from /workspaces/pbgc-form5500/src/app.js
+- [x] T016 [US2] Implement global guidance for manual remote-download workflow in /workspaces/pbgc-form5500/src/app.js
 
 ## Phase 5: User Story 3 - Ingest EFAST CSV search exports (Priority: P2)
 
@@ -48,7 +48,7 @@
 - [x] T017 [P] [US3] Implement CSV parsing and resilient header detection in /workspaces/pbgc-form5500/src/lib/core.js
 - [x] T018 [US3] Implement CSV file ingestion path in /workspaces/pbgc-form5500/src/app.js
 - [x] T019 [US3] Implement metadata-only CSV row handling and guidance text in /workspaces/pbgc-form5500/src/app.js
-- [x] T020 [US3] Reuse the remote download manager for CSV-derived PDF URLs in /workspaces/pbgc-form5500/src/app.js
+- [x] T020 [US3] Reuse the remote reference workflow for CSV-derived PDF URLs in /workspaces/pbgc-form5500/src/app.js
 
 ## Phase 6: Polish & Cross-Cutting Concerns
 

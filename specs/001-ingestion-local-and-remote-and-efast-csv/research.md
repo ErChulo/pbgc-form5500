@@ -12,15 +12,18 @@ one HTML file, and Node built-ins are enough to inline template, CSS, and JS.
 - Hand-maintain one HTML file without source files: rejected because it makes
   testing and iteration harder.
 
-## Decision: Reuse one download engine for pasted URLs and CSV-derived URLs
+## Decision: Reuse one remote-reference workflow for pasted URLs and CSV-derived URLs
 
-**Rationale**: Shared fetch, abort, validation, and error-classification logic
-keeps queue behavior consistent and reduces state divergence.
+**Rationale**: Shared queue treatment for remote references keeps behavior
+consistent without violating the no-programmatic-fetch policy.
 
 **Alternatives considered**:
 
+- Programmatic browser fetch for remote files: rejected because strict CORS
+  environments and the repository constitution prohibit app-managed remote
+  document fetching.
 - Separate handlers for pasted URLs and CSV URLs: rejected because it duplicates
-  concurrency, retry, and validation logic.
+  guidance and queue logic.
 
 ## Decision: Parse EFAST CSV with a resilient header normalizer
 

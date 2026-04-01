@@ -1,5 +1,7 @@
 (function () {
   const core = window.Form5500Core;
+  const pdfSource = window.Form5500PdfSource;
+  const ocrPipeline = window.Form5500OcrPipeline;
   const schemaRegistry = core.getDefaultSchemaRegistry();
   const mandatoryColumnKeys = [
     "planName",
@@ -25,10 +27,6 @@
     },
     previewUrl: null,
     idCounter: 0,
-    downloadManager: {
-      concurrency: 3,
-      activeCount: 0
-    },
     renderQueued: false
   };
 
@@ -43,7 +41,6 @@
     urlInput: document.getElementById("url-input"),
     addLinksButton: document.getElementById("add-links-button"),
     downloadNowButton: document.getElementById("download-now-button"),
-    downloadConcurrency: document.getElementById("download-concurrency"),
     queueSummary: document.getElementById("queue-summary"),
     queueTableBody: document.getElementById("queue-table-body"),
     allYearsHeadRow: document.getElementById("all-years-head-row"),
@@ -116,29 +113,110 @@
       errorMessage: input.errorMessage || null,
       ingestionTimestamp: new Date().toISOString(),
       previewName: input.previewName || input.displayName || input.fileName || "Preview",
-      abortController: null
+      abortController: null,
+      extractionSummary: null
     };
     state.queueItems.push(item);
-    syncExtractedForItem(item);
+    scheduleExtractionForItem(item);
     return item;
+  }
+
+  function setExtractedRecord(item, extracted) {
+    state.extractedById[item.id] = extracted;
+    const exceptions = extracted.extraction && Array.isArray(extracted.extraction.exceptions)
+      ? extracted.extraction.exceptions
+      : [];
+    item.extractionSummary = {
+      parsedFieldCount: extracted.metrics.parsedFieldCount,
+      expectedFieldCount: extracted.metrics.expectedFieldCount,
+      exceptionCount: exceptions.length,
+      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId)
+    };
   }
 
   function syncExtractedForItem(item) {
     if (item.metadata) {
-      state.extractedById[item.id] = core.buildExtractedFromCsvRow(item.metadata, {
+      setExtractedRecord(item, core.buildExtractedFromCsvRow(item.metadata, {
         ingestId: item.id,
         ingestionTimestamp: item.ingestionTimestamp,
         schemaRegistry: state.schemaRegistry
-      });
+      }));
       return;
     }
 
     const nameSource = item.fileName || item.displayName || item.remoteUrl || "";
-    state.extractedById[item.id] = core.buildExtractedFromFilename(nameSource, {
+    setExtractedRecord(item, core.buildExtractedFromFilename(nameSource, {
       ingestId: item.id,
       ingestionTimestamp: item.ingestionTimestamp,
       schemaRegistry: state.schemaRegistry
-    });
+    }));
+  }
+
+  async function scheduleExtractionForItem(item) {
+    syncExtractedForItem(item);
+    if (!item.blob || !pdfSource || typeof pdfSource.extractPdfDataFromBlob !== "function") {
+      scheduleRender();
+      return;
+    }
+
+    item.status = "extracting";
+    item.progress = 5;
+    item.errorClass = null;
+    item.errorMessage = null;
+    scheduleRender();
+
+    try {
+      const pdfData = await pdfSource.extractPdfDataFromBlob(item.blob, {
+        onProgress(progress, message) {
+          item.progress = progress;
+          if (message) {
+            item.errorMessage = message;
+          }
+          scheduleRender();
+        }
+      });
+
+      let ocrResult = null;
+      if (!pdfData.documentText || !pdfData.documentText.trim()) {
+        ocrResult = await ocrPipeline.attemptOcrFallback(pdfData, {
+          onProgress(progress, message) {
+            item.progress = progress;
+            if (message) {
+              item.errorMessage = message;
+            }
+            scheduleRender();
+          }
+        });
+      }
+
+      const extracted = core.buildExtractedFromPdfData(pdfData, {
+        ingestId: item.id,
+        ingestionTimestamp: item.ingestionTimestamp,
+        schemaRegistry: state.schemaRegistry,
+        fileName: item.fileName || item.displayName,
+        ocr: ocrResult
+      });
+      setExtractedRecord(item, extracted);
+      item.progress = 100;
+      if (ocrResult && ocrResult.status !== "ok") {
+        item.status = "ocr-manual-review";
+        item.errorClass = ocrResult.status;
+        item.errorMessage = ocrResult.message;
+      } else if (item.extractionSummary && item.extractionSummary.exceptionCount) {
+        item.status = "ready-with-exceptions";
+        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields with unresolved values.`;
+      } else {
+        item.status = "ready";
+        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.`;
+      }
+      scheduleRender();
+    } catch (error) {
+      item.status = "error";
+      item.progress = 0;
+      item.errorClass = "extraction-failed";
+      item.errorMessage = error && error.message ? error.message : "PDF extraction failed.";
+      scheduleRender();
+    }
   }
 
   function removeItem(itemId) {
@@ -221,14 +299,14 @@
       const text = await file.text();
       const ingested = core.ingestEfastCsv(text, { sourceName: file.name });
       ingested.records.forEach((record) => {
-        createQueueItem({
-          sourceType: "remoteFromCsv",
-          displayName: record.displayName,
-          fileName: record.remoteUrl ? record.remoteUrl.split("/").pop() || record.displayName : record.displayName,
-          status: record.remoteUrl ? "queued" : "metadata-only",
-          remoteUrl: record.remoteUrl,
-          detailUrl: record.metadata.detailUrl || null,
-          metadata: record.metadata,
+      createQueueItem({
+        sourceType: "remoteFromCsv",
+        displayName: record.displayName,
+        fileName: record.remoteUrl ? record.remoteUrl.split("/").pop() || record.displayName : record.displayName,
+        status: record.remoteUrl ? "manual-download-required" : "metadata-only",
+        remoteUrl: record.remoteUrl,
+        detailUrl: record.metadata.detailUrl || null,
+        metadata: record.metadata,
           originalRow: record.originalRow,
           previewName: record.displayName
         });
@@ -259,7 +337,7 @@
         sourceType: "remoteUrl",
         displayName,
         fileName: displayName,
-        status: "queued",
+        status: "manual-download-required",
         remoteUrl: url,
         previewName: displayName
       });
@@ -272,144 +350,27 @@
     }
   }
 
-  function classifyResponseError(response, url) {
-    if (response.status < 200 || response.status >= 300) {
-      return {
-        errorClass: "http",
-        errorMessage: `Remote server responded with HTTP ${response.status} for ${url}.`
-      };
-    }
-    return null;
-  }
-
-  function isLikelyPdf(bytes) {
-    if (!bytes || bytes.length < 4) {
-      return false;
-    }
-    return bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46;
-  }
-
-  async function downloadItem(item) {
-    if (!item.remoteUrl) {
-      return;
-    }
-
-    if (window.location.protocol === "file:") {
-      item.status = "error";
-      item.errorClass = "fileOriginRestricted";
+  function applyManualDownloadGuidance() {
+    let affectedCount = 0;
+    state.queueItems.forEach((item) => {
+      if (!item.remoteUrl) {
+        return;
+      }
+      item.status = "manual-download-required";
+      item.progress = 0;
+      item.errorClass = null;
       item.errorMessage =
-        "Remote downloads are blocked when the app is opened from file://. Serve the HTML over HTTP(S), or manually download the PDF and drag it into the app.";
+        "Open link to download the file in the browser, then drag the PDF into the app or use the local PDF picker.";
+      affectedCount += 1;
+    });
+
+    if (affectedCount) {
+      setStatus(
+        "Remote links are references only. Open each link in the browser, save the PDF locally, then drag it back into the app.",
+        "warning"
+      );
       scheduleRender();
-      return;
     }
-
-    item.status = "downloading";
-    item.progress = 0;
-    item.errorClass = null;
-    item.errorMessage = null;
-    item.abortController = new AbortController();
-    scheduleRender();
-
-    try {
-      const response = await fetch(item.remoteUrl, { signal: item.abortController.signal });
-      const responseError = classifyResponseError(response, item.remoteUrl);
-      if (responseError) {
-        item.status = "error";
-        item.errorClass = responseError.errorClass;
-        item.errorMessage = responseError.errorMessage;
-        return;
-      }
-
-      const contentType = response.headers.get("content-type") || "";
-      const contentLength = Number(response.headers.get("content-length")) || 0;
-      const reader = response.body && response.body.getReader ? response.body.getReader() : null;
-      const chunks = [];
-      let received = 0;
-
-      if (reader) {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) {
-            break;
-          }
-          chunks.push(value);
-          received += value.byteLength;
-          item.progress = contentLength ? Math.min(100, Math.round((received / contentLength) * 100)) : 0;
-          scheduleRender();
-        }
-      } else {
-        const buffer = await response.arrayBuffer();
-        chunks.push(new Uint8Array(buffer));
-        received = buffer.byteLength;
-      }
-
-      const bytes = new Uint8Array(received);
-      let offset = 0;
-      chunks.forEach((chunk) => {
-        bytes.set(chunk, offset);
-        offset += chunk.byteLength;
-      });
-
-      const looksLikePdf = /pdf/i.test(contentType) || /\.pdf(\?|#|$)/i.test(item.remoteUrl) || isLikelyPdf(bytes);
-      if (!looksLikePdf) {
-        item.status = "error";
-        item.errorClass = "notPdf";
-        item.errorMessage = "Downloaded response does not appear to be a PDF.";
-        return;
-      }
-
-      const blob = new Blob([bytes], { type: "application/pdf" });
-      item.blob = blob;
-      item.size = blob.size;
-      item.status = "ready";
-      item.progress = 100;
-      item.fileName = item.fileName || (new URL(item.remoteUrl).pathname.split("/").pop() || "downloaded.pdf");
-
-      if (!item.metadata) {
-        syncExtractedForItem(item);
-      }
-    } catch (error) {
-      if (error && error.name === "AbortError") {
-        item.status = "canceled";
-        item.errorClass = "canceled";
-        item.errorMessage = "Download canceled by user.";
-      } else if (error instanceof TypeError) {
-        item.status = "error";
-        item.errorClass = "network";
-        item.errorMessage =
-          "Network request failed. This can indicate a CORS restriction, offline connection, or a blocked remote host.";
-      } else {
-        item.status = "error";
-        item.errorClass = "network";
-        item.errorMessage = "Download failed before the PDF could be loaded.";
-      }
-    } finally {
-      item.abortController = null;
-      scheduleRender();
-      state.downloadManager.activeCount = Math.max(0, state.downloadManager.activeCount - 1);
-      pumpDownloads();
-    }
-  }
-
-  function pumpDownloads() {
-    while (state.downloadManager.activeCount < state.downloadManager.concurrency) {
-      const next = state.queueItems.find((item) => item.status === "queued" && item.remoteUrl);
-      if (!next) {
-        break;
-      }
-      state.downloadManager.activeCount += 1;
-      downloadItem(next);
-    }
-  }
-
-  function startDownloads() {
-    state.downloadManager.concurrency = clampConcurrency(elements.downloadConcurrency.value);
-    pumpDownloads();
-  }
-
-  function clampConcurrency(value) {
-    const number = Number(value) || 3;
-    return Math.min(8, Math.max(1, number));
   }
 
   function getSummaryCounts() {
@@ -438,15 +399,6 @@
         if (item.blob) {
           actions.push(`<button type="button" class="small" data-action="preview" data-id="${item.id}">Preview</button>`);
         }
-        if (item.remoteUrl && item.status === "queued") {
-          actions.push(`<button type="button" class="small secondary" data-action="download" data-id="${item.id}">Download</button>`);
-        }
-        if (item.abortController) {
-          actions.push(`<button type="button" class="small secondary" data-action="cancel" data-id="${item.id}">Cancel</button>`);
-        }
-        if (item.status === "error" || item.status === "canceled") {
-          actions.push(`<button type="button" class="small secondary" data-action="retry" data-id="${item.id}">Retry</button>`);
-        }
         if (item.remoteUrl) {
           actions.push(`<a class="buttonlike small secondary" href="${sanitizeHtml(item.remoteUrl)}" target="_blank" rel="noreferrer">Open link</a>`);
         } else if (item.detailUrl) {
@@ -456,9 +408,20 @@
 
         const statusDetail = item.errorMessage
           ? `<div class="muted">${sanitizeHtml(item.errorMessage)}</div>`
+          : item.status === "manual-download-required"
+            ? `<div class="muted">Remote links are references only. Open the link, download the PDF manually, then drag it into the queue.</div>`
           : item.status === "metadata-only"
             ? `<div class="muted">No PDF URL in CSV row. Add a PDF manually or paste the missing link.</div>`
             : "";
+        const extractionDetail = item.extractionSummary
+          ? `<div class="muted">Extraction: ${sanitizeHtml(
+              `${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} parsed`
+            )}</div>${
+              item.extractionSummary.unresolvedFieldIds.length
+                ? `<div class="muted">Unresolved: ${sanitizeHtml(item.extractionSummary.unresolvedFieldIds.join(", "))}</div>`
+                : ""
+            }`
+          : "";
 
         const metadataTag = item.metadata
           ? `<div class="muted mono">CSV trace row</div>`
@@ -476,8 +439,9 @@
             <td>
               <div class="pill">${sanitizeHtml(item.status)}</div>
               ${statusDetail}
+              ${extractionDetail}
             </td>
-            <td>${item.progress ? `${item.progress}%` : item.status === "downloading" ? "Starting" : "-"}</td>
+            <td>${item.progress ? `${item.progress}%` : "-"}</td>
             <td><div class="actions-row">${actions.join("")}</div></td>
           </tr>
         `;
@@ -567,10 +531,11 @@
     if (fileOrigin) {
       elements.remoteOriginWarning.hidden = false;
       elements.remoteOriginWarning.textContent =
-        "Remote downloads are blocked when opened from file:// in many browsers. Serve this HTML over HTTP(S), or manually download the PDF and drag it into the app.";
+        "Remote links are references only. The app never fetches them directly. Open each link in the browser, save the PDF locally, then drag it into the app or use the local file picker.";
     } else {
-      elements.remoteOriginWarning.hidden = true;
-      elements.remoteOriginWarning.textContent = "";
+      elements.remoteOriginWarning.hidden = false;
+      elements.remoteOriginWarning.textContent =
+        "Remote links are references only. The app never fetches them directly. Open each link in the browser, save the PDF locally, then drag it into the app or use the local file picker.";
     }
   }
 
@@ -601,18 +566,6 @@
       openPreview(itemId);
     } else if (action === "remove") {
       removeItem(itemId);
-    } else if (action === "cancel") {
-      if (item.abortController) {
-        item.abortController.abort();
-      }
-    } else if (action === "retry") {
-      item.status = "queued";
-      item.progress = 0;
-      item.errorClass = null;
-      item.errorMessage = null;
-      scheduleRender();
-    } else if (action === "download") {
-      pumpDownloads();
     }
   }
 
@@ -641,11 +594,7 @@
     elements.localPdfInput.addEventListener("change", (event) => handleLocalPdfFiles(event.target.files || []));
     elements.csvInput.addEventListener("change", (event) => handleCsvFiles(event.target.files || []));
     elements.addLinksButton.addEventListener("click", addRemoteLinks);
-    elements.downloadNowButton.addEventListener("click", startDownloads);
-    elements.downloadConcurrency.addEventListener("change", () => {
-      elements.downloadConcurrency.value = String(clampConcurrency(elements.downloadConcurrency.value));
-      state.downloadManager.concurrency = clampConcurrency(elements.downloadConcurrency.value);
-    });
+    elements.downloadNowButton.addEventListener("click", applyManualDownloadGuidance);
     elements.queueTableBody.addEventListener("click", onQueueAction);
     elements.downloadCsvButton.addEventListener("click", exportAllYears);
     elements.copyCsvButton.addEventListener("click", copyAllYears);
