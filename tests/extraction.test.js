@@ -167,6 +167,8 @@ test("redacted schedule placeholders are treated as missing instead of parsed va
   assert.equal(extracted.fields.netAssetsBeginningOfYear.parseStatus, "missing");
   assert.equal(extracted.fields.netAssetsEndOfYear.parseStatus, "missing");
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.parseStatus, "missing");
+  assert.equal(extracted.metrics.maskedNumericFieldCount, 3);
+  assert.equal(extracted.metrics.filingNumericSufficiency, "insufficient");
 });
 
 test("schedule-bound fields are marked not present when the filing omits that schedule", () => {
@@ -196,8 +198,55 @@ test("schedule-bound fields are marked not present when the filing omits that sc
   const scheduleHException = extracted.extraction.exceptions.find((entry) => entry.fieldId === "assetsBeginningOfYear");
   assert.ok(scheduleHException);
   assert.equal(scheduleHException.code, "schedule-not-present");
-  assert.match(scheduleHException.message, /Schedule H is not present/i);
+  assert.match(scheduleHException.message, /Schedule H or I is not present/i);
   assert.equal(extracted.fields.assetsBeginningOfYear.parseStatus, "missing");
+});
+
+test("schedule i numeric rows satisfy canonical asset fields and numeric validation summary", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2023 and ending 12/31/2023",
+    "Name of plan",
+    "Harbor Services Pension Plan",
+    "Plan number 002",
+    "Employer identification number 11-2233445",
+    "5 Total number of participants at the beginning of the plan year 5 85",
+    "b Retired or separated participants receiving benefits 6b 12",
+    "c Other retired or separated participants entitled to future benefits 6c 8",
+    "e Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6e 1",
+    "f Total. Add lines 6d and 6e . 6f 21",
+    "Schedule I",
+    "Schedule SB",
+    "1f Total assets (add all amounts in lines 1a through 1e) 1f 250,000 300,000",
+    "1k Total liabilities (add all amounts in lines 1g through 1j) 1k 20,000 35,000",
+    "1l Net assets (subtract line 1k from line 1f) 1l 230,000 265,000",
+    "14 Funding target attainment percentage................................................................ 14 82.5 %"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1002",
+      ingestionTimestamp: "2026-04-01T00:00:00Z",
+      fileName: "harbor-2023.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.assetsBeginningOfYear.valueNumber, "250000");
+  assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "300000");
+  assert.equal(extracted.fields.liabilitiesBeginningOfYear.valueNumber, "20000");
+  assert.equal(extracted.fields.liabilitiesEndOfYear.valueNumber, "35000");
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "230000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "265000");
+  assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "85");
+  assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.825");
+  assert.equal(extracted.metrics.filingNumericSufficiency, "partial");
+  assert.ok(extracted.metrics.validatedNumericFieldCount >= 8);
 });
 
 test("all-years aggregation carries expanded schema fields into exported rows", () => {

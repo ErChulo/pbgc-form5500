@@ -48,6 +48,15 @@
       return true;
     }
 
+    if (compactDigits.length >= 6 && /^(\d)\1+$/.test(compactDigits)) {
+      return true;
+    }
+
+    const compactLetters = text.replace(/[^A-Za-z]/g, "");
+    if (compactLetters.length >= 6 && /^([A-Za-z])\1+$/i.test(compactLetters)) {
+      return true;
+    }
+
     return false;
   }
 
@@ -147,6 +156,20 @@
       sourcePage: null,
       excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
     };
+  }
+
+  function isNumericType(dataType) {
+    return ["integer", "decimal", "currency", "percent"].includes(dataType);
+  }
+
+  function getSupportedSchedules(definition) {
+    if (Array.isArray(definition.supportedSchedules) && definition.supportedSchedules.length) {
+      return definition.supportedSchedules.map((schedule) => String(schedule || "").toUpperCase());
+    }
+    const requiredSchedule = definition.locationRef && definition.locationRef.schedule
+      ? String(definition.locationRef.schedule).toUpperCase()
+      : null;
+    return requiredSchedule ? [requiredSchedule] : [];
   }
 
   function findSingleValue(joinedText, aliases, valuePattern) {
@@ -371,16 +394,14 @@
 
     const fieldMap = {};
     schemaRegistry.forEach((definition) => {
-      const requiredSchedule = definition.locationRef && definition.locationRef.schedule
-        ? String(definition.locationRef.schedule).toUpperCase()
-        : null;
+      const supportedSchedules = getSupportedSchedules(definition);
       const matchDetails = rawMatches[definition.fieldId] || null;
-      if (requiredSchedule && !detectedSchedules.has(requiredSchedule)) {
+      if (supportedSchedules.length && !supportedSchedules.some((schedule) => detectedSchedules.has(schedule))) {
         fieldMap[definition.fieldId] = normalizeFieldValue(null, definition.dataType);
         exceptions.push({
           fieldId: definition.fieldId,
           code: "schedule-not-present",
-          message: `Schedule ${requiredSchedule} is not present in this filing package.`,
+          message: `Schedule ${supportedSchedules.join(" or ")} is not present in this filing package.`,
           sourcePage: null,
           sourceLabel: definition.name
         });
@@ -399,11 +420,14 @@
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
       } else {
+        const maskedNumericEvidence = isNumericType(definition.dataType) && matchDetails && isLikelyPlaceholderMatch(matchDetails);
         exceptions.push({
           fieldId: definition.fieldId,
-          code: fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
+          code: maskedNumericEvidence ? "masked-numeric-evidence" : fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
           message:
-            fieldValue.parseStatus === "failed"
+            maskedNumericEvidence
+              ? "The filing contains stand-in or masked numeric evidence for this field, so it does not count as validated numeric extraction."
+              : fieldValue.parseStatus === "failed"
               ? fieldValue.parseNotes || "Parser could not normalize the extracted value."
               : "No value was detected in the extracted PDF text.",
           sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,

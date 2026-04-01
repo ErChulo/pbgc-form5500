@@ -456,6 +456,15 @@
       });
     }
 
+    if (qualityApi && typeof qualityApi.summarizeNumericValidation === "function") {
+      const numericValidation = qualityApi.summarizeNumericValidation(extracted.fields, schemaRegistry, extracted.extraction.exceptions);
+      extracted.metrics = {
+        ...extracted.metrics,
+        ...numericValidation
+      };
+      extracted.extraction.numericValidation = numericValidation;
+    }
+
     return extracted;
   }
 

@@ -130,7 +130,11 @@
       parsedFieldCount: extracted.metrics.parsedFieldCount,
       expectedFieldCount: extracted.metrics.expectedFieldCount,
       exceptionCount: exceptions.length,
-      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId)
+      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId),
+      filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
+      validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
+      targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
+      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0
     };
   }
 
@@ -417,6 +421,16 @@
           ? `<div class="muted">Extraction: ${sanitizeHtml(
               `${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} parsed`
             )}</div>${
+              item.extractionSummary.targetedNumericFieldCount
+                ? `<div class="muted">Numeric validation: ${sanitizeHtml(
+                    `${item.extractionSummary.validatedNumericFieldCount}/${item.extractionSummary.targetedNumericFieldCount} ${item.extractionSummary.filingNumericSufficiency}`
+                  )}${
+                    item.extractionSummary.maskedNumericFieldCount
+                      ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
+                      : ""
+                  }</div>`
+                : ""
+            }${
               item.extractionSummary.unresolvedFieldIds.length
                 ? `<div class="muted">Unresolved: ${sanitizeHtml(item.extractionSummary.unresolvedFieldIds.join(", "))}</div>`
                 : ""

@@ -695,6 +695,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "assetsBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 1a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 40
     },
@@ -704,6 +705,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "assetsEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 1b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 41
     },
@@ -713,6 +715,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "liabilitiesBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 2a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 42
     },
@@ -722,6 +725,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "liabilitiesEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 2b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 43
     },
@@ -731,6 +735,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "netAssetsBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 3a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 44
     },
@@ -740,6 +745,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "netAssetsEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 3b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 45
     },
@@ -819,10 +825,55 @@ window.__FORM5500_VENDOR__ = {
     };
   }
 
+  function summarizeNumericValidation(fieldMap, schemaRegistry, exceptions) {
+    const definitions = Array.isArray(schemaRegistry) ? schemaRegistry : [];
+    const targeted = definitions.filter((definition) =>
+      ["integer", "decimal", "currency", "percent"].includes(definition.dataType)
+    );
+    const targetedFieldIds = new Set(targeted.map((definition) => definition.fieldId));
+    const entries = targeted.map((definition) => fieldMap && fieldMap[definition.fieldId]).filter(Boolean);
+    const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const maskedFieldIds = new Set(
+      exceptionList.filter((entry) => entry && entry.code === "masked-numeric-evidence").map((entry) => entry.fieldId)
+    );
+    const scheduleAbsentFieldIds = new Set(
+      exceptionList.filter((entry) => entry && entry.code === "schedule-not-present").map((entry) => entry.fieldId)
+    );
+
+    const validatedNumericFieldCount = entries.filter((field) => field.parseStatus === "parsed").length;
+    const failedNumericFieldCount = entries.filter((field) => field.parseStatus === "failed").length;
+    const unresolvedNumericFieldCount = entries.filter(
+      (field, index) =>
+        field.parseStatus === "missing" &&
+        !maskedFieldIds.has(targeted[index].fieldId) &&
+        !scheduleAbsentFieldIds.has(targeted[index].fieldId)
+    ).length;
+    const maskedNumericFieldCount = Array.from(maskedFieldIds).filter((fieldId) => targetedFieldIds.has(fieldId)).length;
+    const notApplicableNumericFieldCount = Array.from(scheduleAbsentFieldIds).filter((fieldId) => targetedFieldIds.has(fieldId)).length;
+
+    let filingNumericSufficiency = "insufficient";
+    if (validatedNumericFieldCount && !failedNumericFieldCount && !unresolvedNumericFieldCount && !maskedNumericFieldCount) {
+      filingNumericSufficiency = "sufficient";
+    } else if (validatedNumericFieldCount) {
+      filingNumericSufficiency = "partial";
+    }
+
+    return {
+      targetedNumericFieldCount: targeted.length,
+      validatedNumericFieldCount,
+      maskedNumericFieldCount,
+      failedNumericFieldCount,
+      unresolvedNumericFieldCount,
+      notApplicableNumericFieldCount,
+      filingNumericSufficiency
+    };
+  }
+
   return {
     createEvidence,
     createException,
-    summarizeFieldMap
+    summarizeFieldMap,
+    summarizeNumericValidation
   };
 });
 
@@ -915,6 +966,15 @@ window.__FORM5500_VENDOR__ = {
 
     const compactDigits = text.replace(/\D/g, "");
     if (compactDigits.length >= 9 && /(0123456789|1234567890|123456789012|012345678901)/.test(compactDigits)) {
+      return true;
+    }
+
+    if (compactDigits.length >= 6 && /^(\d)\1+$/.test(compactDigits)) {
+      return true;
+    }
+
+    const compactLetters = text.replace(/[^A-Za-z]/g, "");
+    if (compactLetters.length >= 6 && /^([A-Za-z])\1+$/i.test(compactLetters)) {
       return true;
     }
 
@@ -1537,6 +1597,20 @@ dialog::backdrop {
     };
   }
 
+  function isNumericType(dataType) {
+    return ["integer", "decimal", "currency", "percent"].includes(dataType);
+  }
+
+  function getSupportedSchedules(definition) {
+    if (Array.isArray(definition.supportedSchedules) && definition.supportedSchedules.length) {
+      return definition.supportedSchedules.map((schedule) => String(schedule || "").toUpperCase());
+    }
+    const requiredSchedule = definition.locationRef && definition.locationRef.schedule
+      ? String(definition.locationRef.schedule).toUpperCase()
+      : null;
+    return requiredSchedule ? [requiredSchedule] : [];
+  }
+
   function findSingleValue(joinedText, aliases, valuePattern) {
     for (const alias of aliases) {
       const regex = new RegExp(`${alias}\\s*[:\\-]?\\s*(${valuePattern})`, "i");
@@ -1759,16 +1833,14 @@ dialog::backdrop {
 
     const fieldMap = {};
     schemaRegistry.forEach((definition) => {
-      const requiredSchedule = definition.locationRef && definition.locationRef.schedule
-        ? String(definition.locationRef.schedule).toUpperCase()
-        : null;
+      const supportedSchedules = getSupportedSchedules(definition);
       const matchDetails = rawMatches[definition.fieldId] || null;
-      if (requiredSchedule && !detectedSchedules.has(requiredSchedule)) {
+      if (supportedSchedules.length && !supportedSchedules.some((schedule) => detectedSchedules.has(schedule))) {
         fieldMap[definition.fieldId] = normalizeFieldValue(null, definition.dataType);
         exceptions.push({
           fieldId: definition.fieldId,
           code: "schedule-not-present",
-          message: `Schedule ${requiredSchedule} is not present in this filing package.`,
+          message: `Schedule ${supportedSchedules.join(" or ")} is not present in this filing package.`,
           sourcePage: null,
           sourceLabel: definition.name
         });
@@ -1787,11 +1859,14 @@ dialog::backdrop {
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
       } else {
+        const maskedNumericEvidence = isNumericType(definition.dataType) && matchDetails && isLikelyPlaceholderMatch(matchDetails);
         exceptions.push({
           fieldId: definition.fieldId,
-          code: fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
+          code: maskedNumericEvidence ? "masked-numeric-evidence" : fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
           message:
-            fieldValue.parseStatus === "failed"
+            maskedNumericEvidence
+              ? "The filing contains stand-in or masked numeric evidence for this field, so it does not count as validated numeric extraction."
+              : fieldValue.parseStatus === "failed"
               ? fieldValue.parseNotes || "Parser could not normalize the extracted value."
               : "No value was detected in the extracted PDF text.",
           sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,
@@ -2390,6 +2465,15 @@ dialog::backdrop {
       });
     }
 
+    if (qualityApi && typeof qualityApi.summarizeNumericValidation === "function") {
+      const numericValidation = qualityApi.summarizeNumericValidation(extracted.fields, schemaRegistry, extracted.extraction.exceptions);
+      extracted.metrics = {
+        ...extracted.metrics,
+        ...numericValidation
+      };
+      extracted.extraction.numericValidation = numericValidation;
+    }
+
     return extracted;
   }
 
@@ -2775,7 +2859,11 @@ dialog::backdrop {
       parsedFieldCount: extracted.metrics.parsedFieldCount,
       expectedFieldCount: extracted.metrics.expectedFieldCount,
       exceptionCount: exceptions.length,
-      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId)
+      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId),
+      filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
+      validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
+      targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
+      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0
     };
   }
 
@@ -3062,6 +3150,16 @@ dialog::backdrop {
           ? `<div class="muted">Extraction: ${sanitizeHtml(
               `${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} parsed`
             )}</div>${
+              item.extractionSummary.targetedNumericFieldCount
+                ? `<div class="muted">Numeric validation: ${sanitizeHtml(
+                    `${item.extractionSummary.validatedNumericFieldCount}/${item.extractionSummary.targetedNumericFieldCount} ${item.extractionSummary.filingNumericSufficiency}`
+                  )}${
+                    item.extractionSummary.maskedNumericFieldCount
+                      ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
+                      : ""
+                  }</div>`
+                : ""
+            }${
               item.extractionSummary.unresolvedFieldIds.length
                 ? `<div class="muted">Unresolved: ${sanitizeHtml(item.extractionSummary.unresolvedFieldIds.join(", "))}</div>`
                 : ""
