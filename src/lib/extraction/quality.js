@@ -82,10 +82,39 @@
     };
   }
 
+  function summarizeReviewState(exceptions) {
+    const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const counts = {
+      exceptionCount: exceptionList.length,
+      maskedCount: 0,
+      missingCount: 0,
+      failedCount: 0,
+      notApplicableCount: 0
+    };
+
+    exceptionList.forEach((entry) => {
+      if (!entry || !entry.code) {
+        return;
+      }
+      if (entry.code === "masked-numeric-evidence") {
+        counts.maskedCount += 1;
+      } else if (entry.code === "schedule-not-present") {
+        counts.notApplicableCount += 1;
+      } else if (entry.code === "parse-failed") {
+        counts.failedCount += 1;
+      } else if (entry.code === "missing") {
+        counts.missingCount += 1;
+      }
+    });
+
+    return counts;
+  }
+
   return {
     createEvidence,
     createException,
     summarizeFieldMap,
-    summarizeNumericValidation
+    summarizeNumericValidation,
+    summarizeReviewState
   };
 });

@@ -465,6 +465,15 @@
       extracted.extraction.numericValidation = numericValidation;
     }
 
+    if (qualityApi && typeof qualityApi.summarizeReviewState === "function") {
+      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions);
+      extracted.metrics = {
+        ...extracted.metrics,
+        ...reviewState
+      };
+      extracted.extraction.reviewState = reviewState;
+    }
+
     return extracted;
   }
 

@@ -135,8 +135,31 @@
       filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
       validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
       targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
-      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0
+      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0,
+      missingCount: extracted.metrics.missingCount || 0,
+      failedCount: extracted.metrics.failedCount || 0,
+      notApplicableCount: extracted.metrics.notApplicableCount || 0
     };
+  }
+
+  function describeExtractionSummary(summary) {
+    if (!summary) {
+      return "";
+    }
+    const parts = [];
+    if (summary.maskedNumericFieldCount) {
+      parts.push(`${summary.maskedNumericFieldCount} masked`);
+    }
+    if (summary.failedCount) {
+      parts.push(`${summary.failedCount} failed`);
+    }
+    if (summary.missingCount) {
+      parts.push(`${summary.missingCount} unresolved`);
+    }
+    if (summary.notApplicableCount) {
+      parts.push(`${summary.notApplicableCount} not applicable`);
+    }
+    return parts.join(", ");
   }
 
   function syncExtractedForItem(item) {
@@ -209,7 +232,8 @@
         item.errorMessage = ocrResult.message;
       } else if (item.extractionSummary && item.extractionSummary.exceptionCount) {
         item.status = "ready-with-exceptions";
-        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields with unresolved values.`;
+        const reviewDetail = describeExtractionSummary(item.extractionSummary);
+        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.${reviewDetail ? ` Review: ${reviewDetail}.` : ""}`;
       } else {
         item.status = "ready";
         item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.`;
@@ -430,6 +454,10 @@
                       ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
                       : ""
                   }</div>`
+                : ""
+            }${
+              describeExtractionSummary(item.extractionSummary)
+                ? `<div class="muted">Review state: ${sanitizeHtml(describeExtractionSummary(item.extractionSummary))}</div>`
                 : ""
             }${
               item.extractionSummary.unresolvedFieldIds.length

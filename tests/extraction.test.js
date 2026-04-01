@@ -169,6 +169,7 @@ test("redacted schedule placeholders are treated as missing instead of parsed va
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.parseStatus, "missing");
   assert.equal(extracted.metrics.maskedNumericFieldCount, 3);
   assert.equal(extracted.metrics.filingNumericSufficiency, "insufficient");
+  assert.equal(extracted.metrics.maskedCount, 3);
 });
 
 test("schedule-bound fields are marked not present when the filing omits that schedule", () => {
@@ -200,6 +201,7 @@ test("schedule-bound fields are marked not present when the filing omits that sc
   assert.equal(scheduleHException.code, "schedule-not-present");
   assert.match(scheduleHException.message, /Schedule H or I is not present/i);
   assert.equal(extracted.fields.assetsBeginningOfYear.parseStatus, "missing");
+  assert.ok(extracted.metrics.notApplicableCount >= 1);
 });
 
 test("schedule i numeric rows satisfy canonical asset fields and numeric validation summary", () => {

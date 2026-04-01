@@ -874,11 +874,40 @@ window.__FORM5500_VENDOR__ = {
     };
   }
 
+  function summarizeReviewState(exceptions) {
+    const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const counts = {
+      exceptionCount: exceptionList.length,
+      maskedCount: 0,
+      missingCount: 0,
+      failedCount: 0,
+      notApplicableCount: 0
+    };
+
+    exceptionList.forEach((entry) => {
+      if (!entry || !entry.code) {
+        return;
+      }
+      if (entry.code === "masked-numeric-evidence") {
+        counts.maskedCount += 1;
+      } else if (entry.code === "schedule-not-present") {
+        counts.notApplicableCount += 1;
+      } else if (entry.code === "parse-failed") {
+        counts.failedCount += 1;
+      } else if (entry.code === "missing") {
+        counts.missingCount += 1;
+      }
+    });
+
+    return counts;
+  }
+
   return {
     createEvidence,
     createException,
     summarizeFieldMap,
-    summarizeNumericValidation
+    summarizeNumericValidation,
+    summarizeReviewState
   };
 });
 
@@ -2484,6 +2513,15 @@ dialog::backdrop {
       extracted.extraction.numericValidation = numericValidation;
     }
 
+    if (qualityApi && typeof qualityApi.summarizeReviewState === "function") {
+      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions);
+      extracted.metrics = {
+        ...extracted.metrics,
+        ...reviewState
+      };
+      extracted.extraction.reviewState = reviewState;
+    }
+
     return extracted;
   }
 
@@ -2912,8 +2950,31 @@ dialog::backdrop {
       filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
       validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
       targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
-      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0
+      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0,
+      missingCount: extracted.metrics.missingCount || 0,
+      failedCount: extracted.metrics.failedCount || 0,
+      notApplicableCount: extracted.metrics.notApplicableCount || 0
     };
+  }
+
+  function describeExtractionSummary(summary) {
+    if (!summary) {
+      return "";
+    }
+    const parts = [];
+    if (summary.maskedNumericFieldCount) {
+      parts.push(`${summary.maskedNumericFieldCount} masked`);
+    }
+    if (summary.failedCount) {
+      parts.push(`${summary.failedCount} failed`);
+    }
+    if (summary.missingCount) {
+      parts.push(`${summary.missingCount} unresolved`);
+    }
+    if (summary.notApplicableCount) {
+      parts.push(`${summary.notApplicableCount} not applicable`);
+    }
+    return parts.join(", ");
   }
 
   function syncExtractedForItem(item) {
@@ -2986,7 +3047,8 @@ dialog::backdrop {
         item.errorMessage = ocrResult.message;
       } else if (item.extractionSummary && item.extractionSummary.exceptionCount) {
         item.status = "ready-with-exceptions";
-        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields with unresolved values.`;
+        const reviewDetail = describeExtractionSummary(item.extractionSummary);
+        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.${reviewDetail ? ` Review: ${reviewDetail}.` : ""}`;
       } else {
         item.status = "ready";
         item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.`;
@@ -3207,6 +3269,10 @@ dialog::backdrop {
                       ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
                       : ""
                   }</div>`
+                : ""
+            }${
+              describeExtractionSummary(item.extractionSummary)
+                ? `<div class="muted">Review state: ${sanitizeHtml(describeExtractionSummary(item.extractionSummary))}</div>`
                 : ""
             }${
               item.extractionSummary.unresolvedFieldIds.length
