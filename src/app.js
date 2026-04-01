@@ -43,6 +43,7 @@
     downloadNowButton: document.getElementById("download-now-button"),
     queueSummary: document.getElementById("queue-summary"),
     queueTableBody: document.getElementById("queue-table-body"),
+    corpusSummary: document.getElementById("corpus-summary"),
     allYearsHeadRow: document.getElementById("all-years-head-row"),
     allYearsBody: document.getElementById("all-years-body"),
     downloadCsvButton: document.getElementById("download-csv-button"),
@@ -473,10 +474,32 @@
 
   function renderAllYears() {
     const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const corpusSummary = core.summarizeValidationCorpus(Object.values(state.extractedById));
     const visibleColumns = [
       ...aggregated.mandatoryColumns,
       ...aggregated.additionalColumns.filter((column) => state.settings.visibleAdditionalColumns.includes(column.key))
     ];
+
+    elements.corpusSummary.innerHTML = aggregated.rows.length
+      ? [
+          `<span class="pill">filings: ${corpusSummary.filingCount}</span>`,
+          `<span class="pill">sufficient: ${corpusSummary.sufficientFilingCount}</span>`,
+          `<span class="pill">partial: ${corpusSummary.partialFilingCount}</span>`,
+          `<span class="pill">insufficient: ${corpusSummary.insufficientFilingCount}</span>`,
+          `<span class="pill">numeric validated: ${corpusSummary.validatedNumericFieldCount}/${corpusSummary.targetedNumericFieldCount || 0}</span>`,
+          corpusSummary.maskedNumericFieldCount
+            ? `<span class="pill">masked: ${corpusSummary.maskedNumericFieldCount}</span>`
+            : "",
+          corpusSummary.failedNumericFieldCount
+            ? `<span class="pill">failed: ${corpusSummary.failedNumericFieldCount}</span>`
+            : "",
+          corpusSummary.unresolvedNumericFieldCount
+            ? `<span class="pill">unresolved: ${corpusSummary.unresolvedNumericFieldCount}</span>`
+            : ""
+        ]
+          .filter(Boolean)
+          .join("")
+      : `<span class="muted">No validation corpus summary yet.</span>`;
 
     elements.allYearsHeadRow.innerHTML = visibleColumns.map((column) => `<th>${sanitizeHtml(column.label)}</th>`).join("");
 

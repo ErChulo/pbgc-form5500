@@ -577,6 +577,43 @@
     return { rows, mandatoryColumns, additionalColumns };
   }
 
+  function summarizeValidationCorpus(extractedRecords) {
+    const records = Array.isArray(extractedRecords) ? extractedRecords.slice() : [];
+    const totals = {
+      filingCount: records.length,
+      sufficientFilingCount: 0,
+      partialFilingCount: 0,
+      insufficientFilingCount: 0,
+      validatedNumericFieldCount: 0,
+      targetedNumericFieldCount: 0,
+      maskedNumericFieldCount: 0,
+      failedNumericFieldCount: 0,
+      unresolvedNumericFieldCount: 0,
+      notApplicableNumericFieldCount: 0
+    };
+
+    records.forEach((record) => {
+      const metrics = (record && record.metrics) || {};
+      const sufficiency = metrics.filingNumericSufficiency || "insufficient";
+      if (sufficiency === "sufficient") {
+        totals.sufficientFilingCount += 1;
+      } else if (sufficiency === "partial") {
+        totals.partialFilingCount += 1;
+      } else {
+        totals.insufficientFilingCount += 1;
+      }
+
+      totals.validatedNumericFieldCount += Number(metrics.validatedNumericFieldCount || 0);
+      totals.targetedNumericFieldCount += Number(metrics.targetedNumericFieldCount || 0);
+      totals.maskedNumericFieldCount += Number(metrics.maskedNumericFieldCount || 0);
+      totals.failedNumericFieldCount += Number(metrics.failedNumericFieldCount || 0);
+      totals.unresolvedNumericFieldCount += Number(metrics.unresolvedNumericFieldCount || 0);
+      totals.notApplicableNumericFieldCount += Number(metrics.notApplicableNumericFieldCount || 0);
+    });
+
+    return totals;
+  }
+
   function toCsv(columns, rows) {
     const header = columns.map((column) => quoteCsvCell(column.label)).join(",");
     const body = rows.map((row) => columns.map((column) => quoteCsvCell(row[column.key] || "")).join(","));
@@ -713,6 +750,7 @@
     normalizeFieldValue,
     parseCsv,
     quoteCsvCell,
+    summarizeValidationCorpus,
     toCsv
   };
 });
