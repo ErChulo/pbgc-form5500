@@ -247,6 +247,45 @@ test("redacted schedule placeholders are treated as missing instead of parsed va
   assert.equal(extracted.metrics.maskedCount, 3);
 });
 
+test("placeholder participant counts are treated as masked numeric evidence", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "5 Total number of participants at the beginning of the plan year 5 123456789012",
+    "b Retired or separated participants receiving benefits 6b 123456789012",
+    "c Other retired or separated participants entitled to future benefits 6c 123456789012",
+    "e Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6e 123456789012",
+    "f Total. Add lines 6d and 6e . 6f 123456789012"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000e",
+      ingestionTimestamp: "2026-04-02T00:00:00Z",
+      fileName: "northwind-2024-placeholder-participants.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.participantCountBeginningOfYear.parseStatus, "missing");
+  assert.equal(extracted.fields.retiredParticipantsReceivingBenefits.parseStatus, "missing");
+  assert.equal(extracted.fields.separatedParticipantsEntitledToBenefits.parseStatus, "missing");
+  assert.equal(extracted.fields.deceasedParticipantsBeneficiaries.parseStatus, "missing");
+  assert.equal(extracted.fields.participantCountTotal.parseStatus, "missing");
+  assert.equal(extracted.metrics.maskedNumericFieldCount, 5);
+  assert.equal(extracted.metrics.maskedCount, 5);
+  assert.equal(extracted.metrics.filingNumericSufficiency, "insufficient");
+});
+
 test("schedule-bound fields are marked not present when the filing omits that schedule", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",
