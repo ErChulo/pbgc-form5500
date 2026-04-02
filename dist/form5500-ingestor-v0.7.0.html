@@ -1638,6 +1638,32 @@ dialog::backdrop {
     return null;
   }
 
+  function findScheduleLinePairInLines(lines, lineCode, aliases, pairIndex) {
+    const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?(?:\s*%?)?\)?(?![A-Za-z])/g;
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      for (let lookahead = 1; lookahead <= 2; lookahead += 1) {
+        const candidate = lines[index + lookahead];
+        if (!candidate || !new RegExp(`\\b${lineCode}\\b`, "i").test(candidate)) {
+          continue;
+        }
+        const matches = candidate.match(numberPattern);
+        if (matches && matches[pairIndex]) {
+          return {
+            value: sanitizeExtractedText(matches[pairIndex]),
+            sourceLabel: lineCode,
+            sourcePage: null,
+            excerpt: `${sanitizeExtractedText(line)} ${sanitizeExtractedText(candidate)}`.slice(0, 500)
+          };
+        }
+      }
+    }
+    return null;
+  }
+
   function isNumericType(dataType) {
     return ["integer", "decimal", "currency", "percent"].includes(dataType);
   }
@@ -1878,12 +1904,24 @@ dialog::backdrop {
       { labelPattern: "Total number of participants", lineCode: "6g" },
       { labelPattern: "Total\\. Add lines 6e and 6f", lineCode: "6g" }
     ]) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
-    rawMatches.assetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0);
-    rawMatches.assetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1);
-    rawMatches.liabilitiesBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0);
-    rawMatches.liabilitiesEndOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1);
-    rawMatches.netAssetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0);
-    rawMatches.netAssetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1);
+    rawMatches.assetsBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 0);
+    rawMatches.assetsEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 1);
+    rawMatches.liabilitiesBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 0);
+    rawMatches.liabilitiesEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 1);
+    rawMatches.netAssetsBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 0);
+    rawMatches.netAssetsEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 1);
     rawMatches.scheduleHAccountantOpinion = findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
