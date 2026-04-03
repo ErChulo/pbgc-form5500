@@ -32,6 +32,10 @@ const pdfWorkerPath = resolveExistingPath([
   path.join(rootDir, "node_modules", "pdfjs-dist", "legacy", "build", "pdf.worker.min.mjs"),
   path.join(rootDir, "node_modules", "pdfjs-dist", "build", "pdf.worker.min.mjs")
 ]);
+const tesseractModulePath = path.join(rootDir, "node_modules", "tesseract.js", "dist", "tesseract.min.js");
+const tesseractWorkerPath = path.join(rootDir, "node_modules", "tesseract.js", "dist", "worker.min.js");
+const tesseractCorePath = path.join(rootDir, "node_modules", "tesseract.js-core", "tesseract-core-lstm.wasm.js");
+const tesseractEnglishDataPath = path.join(rootDir, "assets", "tessdata", "eng.traineddata.gz");
 
 const template = read(path.join(srcDir, "index.template.html"));
 const css = read(path.join(srcDir, "styles.css"));
@@ -47,7 +51,11 @@ const app = read(path.join(srcDir, "app.js"));
 const vendorBootstrap = [
   "window.__FORM5500_VENDOR__ = {",
   `  pdfModuleBase64: ${JSON.stringify(fs.readFileSync(pdfModulePath).toString("base64"))},`,
-  `  pdfWorkerBase64: ${JSON.stringify(fs.readFileSync(pdfWorkerPath).toString("base64"))}`,
+  `  pdfWorkerBase64: ${JSON.stringify(fs.readFileSync(pdfWorkerPath).toString("base64"))},`,
+  `  tesseractModuleBase64: ${JSON.stringify(fs.readFileSync(tesseractModulePath).toString("base64"))},`,
+  `  tesseractWorkerBase64: ${JSON.stringify(fs.readFileSync(tesseractWorkerPath).toString("base64"))},`,
+  `  tesseractCoreBase64: ${JSON.stringify(fs.readFileSync(tesseractCorePath).toString("base64"))},`,
+  `  tesseractEnglishDataBase64: ${JSON.stringify(fs.readFileSync(tesseractEnglishDataPath).toString("base64"))}`,
   "};"
 ].join("\n");
 
