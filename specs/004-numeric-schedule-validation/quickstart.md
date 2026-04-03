@@ -34,3 +34,9 @@ The feature is ready only when:
 - masked numeric content is not counted as successful extraction
 - repeated runs of the same corpus produce the same numeric statuses and results
 - automated tests cover the discovered regression patterns
+
+## Current Residual Gaps
+
+- The uploaded public-style fixtures in `tests/fixtures/feature-003/` still contain masked or stand-in participant and Schedule H values in the critical numeric rows, so they do not prove full numeric extraction completion.
+- The scanned `FORM 5500 - 2015.pdf` remains a valid OCR/manual-remediation test case, but it does not contribute to text-native numeric completion for this feature.
+- The branch now distinguishes real numeric evidence from masked evidence, but final sign-off still requires at least one representative text-searchable filing with genuinely populated participant and schedule numbers.

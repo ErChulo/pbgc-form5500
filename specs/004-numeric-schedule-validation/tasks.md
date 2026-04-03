@@ -11,7 +11,7 @@
 
 **Purpose**: Prepare reusable corpus-validation and fixture-analysis scaffolding for the feature.
 
-- [ ] T001 Create a validation corpus manifest and guidance in `specs/004-numeric-schedule-validation/quickstart.md`
+- [x] T001 Create a validation corpus manifest and guidance in `specs/004-numeric-schedule-validation/quickstart.md`
 - [ ] T002 Add fixture naming and corpus classification helpers in `tests/extraction.test.js`
 
 ---
@@ -22,9 +22,9 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T003 Extend targeted numeric field coverage and location references in `src/lib/schema/historical-registry.js`
-- [ ] T004 [P] Add filing-level numeric sufficiency summary helpers in `src/lib/extraction/quality.js`
-- [ ] T005 Wire numeric sufficiency metadata into extracted records in `src/lib/core.js`
+- [x] T003 Extend targeted numeric field coverage and location references in `src/lib/schema/historical-registry.js`
+- [x] T004 [P] Add filing-level numeric sufficiency summary helpers in `src/lib/extraction/quality.js`
+- [x] T005 Wire numeric sufficiency metadata into extracted records in `src/lib/core.js`
 
 **Checkpoint**: Numeric sufficiency infrastructure and targeted numeric field definitions are ready.
 
@@ -38,15 +38,15 @@
 
 ### Tests for User Story 1
 
-- [ ] T006 [P] [US1] Add participant-count regression cases in `tests/extraction.test.js`
-- [ ] T007 [P] [US1] Add Schedule H, Schedule I, and Schedule SB numeric regression cases in `tests/extraction.test.js`
+- [x] T006 [P] [US1] Add participant-count regression cases in `tests/extraction.test.js`
+- [x] T007 [P] [US1] Add Schedule H, Schedule I, and Schedule SB numeric regression cases in `tests/extraction.test.js`
 
 ### Implementation for User Story 1
 
-- [ ] T008 [US1] Implement row-local participant-count extraction improvements in `src/lib/extraction/field-mapper.js`
-- [ ] T009 [US1] Implement row-local Schedule H and Schedule I numeric extraction improvements in `src/lib/extraction/field-mapper.js`
-- [ ] T010 [US1] Tighten Schedule SB percentage extraction against real row patterns in `src/lib/extraction/field-mapper.js`
-- [ ] T011 [US1] Preserve improved numeric evidence and exception context in `src/lib/core.js`
+- [x] T008 [US1] Implement row-local participant-count extraction improvements in `src/lib/extraction/field-mapper.js`
+- [x] T009 [US1] Implement row-local Schedule H and Schedule I numeric extraction improvements in `src/lib/extraction/field-mapper.js`
+- [x] T010 [US1] Tighten Schedule SB percentage extraction against real row patterns in `src/lib/extraction/field-mapper.js`
+- [x] T011 [US1] Preserve improved numeric evidence and exception context in `src/lib/core.js`
 
 **Checkpoint**: Targeted participant and schedule numeric fields are correctly extracted from readable populated filings.
 
@@ -60,15 +60,15 @@
 
 ### Tests for User Story 2
 
-- [ ] T012 [P] [US2] Add masked-versus-valid numeric sufficiency regressions in `tests/extraction.test.js`
-- [ ] T013 [P] [US2] Add filing-level sufficiency summary regressions in `tests/core.test.js`
+- [x] T012 [P] [US2] Add masked-versus-valid numeric sufficiency regressions in `tests/extraction.test.js`
+- [x] T013 [P] [US2] Add filing-level sufficiency summary regressions in `tests/core.test.js`
 
 ### Implementation for User Story 2
 
-- [ ] T014 [US2] Expand stand-in numeric detection rules for participant and schedule fields in `src/lib/extraction/field-mapper.js`
-- [ ] T015 [US2] Emit explicit masked-versus-failed numeric exceptions in `src/lib/extraction/quality.js`
-- [ ] T016 [US2] Surface numeric sufficiency and insufficiency states in the extraction UI in `src/app.js`
-- [ ] T017 [US2] Reflect numeric sufficiency details in all-years and filing review state assembly in `src/lib/core.js`
+- [x] T014 [US2] Expand stand-in numeric detection rules for participant and schedule fields in `src/lib/extraction/field-mapper.js`
+- [x] T015 [US2] Emit explicit masked-versus-failed numeric exceptions in `src/lib/extraction/quality.js`
+- [x] T016 [US2] Surface numeric sufficiency and insufficiency states in the extraction UI in `src/app.js`
+- [x] T017 [US2] Reflect numeric sufficiency details in all-years and filing review state assembly in `src/lib/core.js`
 
 **Checkpoint**: Users can distinguish valid numeric proof from masked or insufficient numeric filings.
 
@@ -82,14 +82,14 @@
 
 ### Tests for User Story 3
 
-- [ ] T018 [P] [US3] Add deterministic corpus-summary regression coverage in `tests/core.test.js`
+- [x] T018 [P] [US3] Add deterministic corpus-summary regression coverage in `tests/core.test.js`
 - [ ] T019 [P] [US3] Add representative-corpus validation workflow coverage in `tests/extraction.test.js`
 
 ### Implementation for User Story 3
 
-- [ ] T020 [US3] Add corpus-level numeric validation summarization in `src/lib/core.js`
-- [ ] T021 [US3] Add reviewer-facing corpus validation output to the app workflow in `src/app.js`
-- [ ] T022 [US3] Finalize corpus execution and sign-off guidance in `specs/004-numeric-schedule-validation/quickstart.md`
+- [x] T020 [US3] Add corpus-level numeric validation summarization in `src/lib/core.js`
+- [x] T021 [US3] Add reviewer-facing corpus validation output to the app workflow in `src/app.js`
+- [x] T022 [US3] Finalize corpus execution and sign-off guidance in `specs/004-numeric-schedule-validation/quickstart.md`
 
 **Checkpoint**: A representative corpus can be used to prove or disprove completion deterministically.
 
@@ -99,9 +99,9 @@
 
 **Purpose**: Final verification and release-safety checks across all stories.
 
-- [ ] T023 [P] Reconcile numeric validation contract details with implementation in `specs/004-numeric-schedule-validation/contracts/numeric-validation-contract.md`
-- [ ] T024 Run end-to-end verification with `npm test` and `npm run build`
-- [ ] T025 [P] Perform quickstart validation and record any residual corpus gaps in `specs/004-numeric-schedule-validation/quickstart.md`
+- [x] T023 [P] Reconcile numeric validation contract details with implementation in `specs/004-numeric-schedule-validation/contracts/numeric-validation-contract.md`
+- [x] T024 Run end-to-end verification with `npm test` and `npm run build`
+- [x] T025 [P] Perform quickstart validation and record any residual corpus gaps in `specs/004-numeric-schedule-validation/quickstart.md`
 
 ---
 

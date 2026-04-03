@@ -31,6 +31,8 @@ Define the observable behavior required for participant-count and schedule-numbe
    - normalized targeted field values
    - field statuses
    - filing-level sufficiency classifications
+7. Filing review output must distinguish masked, unresolved, failed, and not-applicable numeric states instead of collapsing them into one generic exception bucket.
+8. Corpus-level review output must summarize filing sufficiency counts and targeted numeric validation counts deterministically for the same filing set.
 
 ## Validation Expectations
 
