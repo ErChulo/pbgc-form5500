@@ -15,6 +15,48 @@ function escapeInlineScript(source) {
   return source.replace(/<\/script/gi, "<\\/script");
 }
 
+function sanitizeLegacyVendorSyntax(source) {
+  return source
+    .replaceAll("document.currentScript?.src", "(document.currentScript&&document.currentScript.src)")
+    .replaceAll("process.versions?.node", "(process.versions&&process.versions.node)")
+    .replaceAll("e.onAbort?.(a)", "(e.onAbort&&e.onAbort(a))")
+    .replaceAll("pa?.(a)", "(pa&&pa(a))")
+    .replaceAll("a.output?.length", "(a.output&&a.output.length)")
+    .replaceAll("e.monitorRunDependencies?.(qb)", "(e.monitorRunDependencies&&e.monitorRunDependencies(qb))")
+    .replaceAll("m?.()", "(m&&m())")
+    .replaceAll("b.gg??(b.gg=!0)", "(b.gg==null&&(b.gg=!0))")
+    .replaceAll("44===m?.Lf", "44===(m&&m.Lf)")
+    .replaceAll("a.Gf?.Hh?.(a)", "(a.Gf&&a.Gf.Hh&&a.Gf.Hh(a))")
+    .replaceAll("var d=a?.Gf.Rf;a=d?a:b;d??=b.Ff.Rf;", "var d=a&&a.Gf?a.Gf.Rf:void 0;a=d?a:b;if(d==null)d=b.Ff.Rf;")
+    .replaceAll("a.Gf.open?.(a)", "(a.Gf.open&&a.Gf.open(a))")
+    .replaceAll("a??=e.stdin", "a=a==null?e.stdin:a")
+    .replaceAll("b??=e.stdout", "b=b==null?e.stdout:b")
+    .replaceAll("c??=e.stderr", "c=c==null?e.stderr:c")
+    .replaceAll("(f=x.Yf).ug??(f.ug=64);", "if((f=x.Yf).ug==null)f.ug=64;")
+    .replaceAll("d?.buffer?.length", "((d&&d.buffer)&&d.buffer.length)")
+    .replaceAll("e.onExit?.(a)", "(e.onExit&&e.onExit(a))")
+    .replaceAll("oa?.(e)", "(oa&&oa(e))")
+    .replaceAll("e.onRuntimeInitialized?.()", "(e.onRuntimeInitialized&&e.onRuntimeInitialized())")
+    .replaceAll("xa??=e.locateFile?e.locateFile(\"tesseract-core-lstm.wasm\",fa):fa+\"tesseract-core-lstm.wasm\"",
+      "xa=xa==null?(e.locateFile?e.locateFile(\"tesseract-core-lstm.wasm\",fa):fa+\"tesseract-core-lstm.wasm\"):xa");
+}
+
+function buildEmbeddedTesseractCore(coreSource, wasmBase64) {
+  const embeddedBinary = [
+    "moduleArg.wasmBinary=(function(){",
+    `var b=atob(${JSON.stringify(wasmBase64)});`,
+    "var a=new Uint8Array(b.length);",
+    "for(var i=0;i<b.length;i+=1){a[i]=b.charCodeAt(i);}",
+    "return a.buffer;",
+    "})();"
+  ].join("");
+
+  return sanitizeLegacyVendorSyntax(coreSource).replace(
+    "return async function(moduleArg={}){",
+    `return async function(moduleArg={}){${embeddedBinary}`
+  );
+}
+
 function resolveExistingPath(candidates) {
   for (const candidate of candidates) {
     if (fs.existsSync(candidate)) {
@@ -34,7 +76,8 @@ const pdfWorkerPath = resolveExistingPath([
 ]);
 const tesseractModulePath = path.join(rootDir, "node_modules", "tesseract.js", "dist", "tesseract.min.js");
 const tesseractWorkerPath = path.join(rootDir, "node_modules", "tesseract.js", "dist", "worker.min.js");
-const tesseractCorePath = path.join(rootDir, "node_modules", "tesseract.js-core", "tesseract-core-lstm.wasm.js");
+const tesseractCorePath = path.join(rootDir, "node_modules", "tesseract.js-core", "tesseract-core-lstm.js");
+const tesseractCoreWasmPath = path.join(rootDir, "node_modules", "tesseract.js-core", "tesseract-core-lstm.wasm");
 const tesseractEnglishDataPath = path.join(rootDir, "assets", "tessdata", "eng.traineddata.gz");
 
 const template = read(path.join(srcDir, "index.template.html"));
@@ -54,7 +97,15 @@ const vendorBootstrap = [
   `  pdfWorkerBase64: ${JSON.stringify(fs.readFileSync(pdfWorkerPath).toString("base64"))},`,
   `  tesseractModuleBase64: ${JSON.stringify(fs.readFileSync(tesseractModulePath).toString("base64"))},`,
   `  tesseractWorkerBase64: ${JSON.stringify(fs.readFileSync(tesseractWorkerPath).toString("base64"))},`,
-  `  tesseractCoreBase64: ${JSON.stringify(fs.readFileSync(tesseractCorePath).toString("base64"))},`,
+  `  tesseractCoreBase64: ${JSON.stringify(
+    Buffer.from(
+      buildEmbeddedTesseractCore(
+        fs.readFileSync(tesseractCorePath, "utf8"),
+        fs.readFileSync(tesseractCoreWasmPath).toString("base64")
+      ),
+      "utf8"
+    ).toString("base64")
+  )},`,
   `  tesseractEnglishDataBase64: ${JSON.stringify(fs.readFileSync(tesseractEnglishDataPath).toString("base64"))}`,
   "};"
 ].join("\n");
