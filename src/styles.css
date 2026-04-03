@@ -282,6 +282,10 @@ th {
   background: var(--accent-soft);
 }
 
+.summary-panel {
+  margin: 0 0 1rem;
+}
+
 .note {
   border-radius: 14px;
   padding: 0.8rem 0.9rem;

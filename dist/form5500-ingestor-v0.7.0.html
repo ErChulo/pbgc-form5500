@@ -289,6 +289,10 @@ th {
   background: var(--accent-soft);
 }
 
+.summary-panel {
+  margin: 0 0 1rem;
+}
+
 .note {
   border-radius: 14px;
   padding: 0.8rem 0.9rem;
@@ -480,6 +484,7 @@ dialog::backdrop {
                 <button id="copy-csv-button" type="button" class="secondary">Copy CSV</button>
               </div>
             </div>
+            <div id="corpus-summary" class="summary-pills summary-panel" aria-live="polite"></div>
             <details class="column-chooser">
               <summary>Column chooser</summary>
               <div id="column-chooser-list" class="chooser-grid"></div>
@@ -695,6 +700,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "assetsBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 1a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 40
     },
@@ -704,6 +710,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "assetsEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 1b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 41
     },
@@ -713,6 +720,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "liabilitiesBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 2a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 42
     },
@@ -722,6 +730,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "liabilitiesEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 2b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 43
     },
@@ -731,6 +740,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "netAssetsBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 3a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 44
     },
@@ -740,6 +750,7 @@ window.__FORM5500_VENDOR__ = {
       headerLabel: "netAssetsEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 3b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 45
     },
@@ -819,10 +830,84 @@ window.__FORM5500_VENDOR__ = {
     };
   }
 
+  function summarizeNumericValidation(fieldMap, schemaRegistry, exceptions) {
+    const definitions = Array.isArray(schemaRegistry) ? schemaRegistry : [];
+    const targeted = definitions.filter((definition) =>
+      ["integer", "decimal", "currency", "percent"].includes(definition.dataType)
+    );
+    const targetedFieldIds = new Set(targeted.map((definition) => definition.fieldId));
+    const entries = targeted.map((definition) => fieldMap && fieldMap[definition.fieldId]).filter(Boolean);
+    const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const maskedFieldIds = new Set(
+      exceptionList.filter((entry) => entry && entry.code === "masked-numeric-evidence").map((entry) => entry.fieldId)
+    );
+    const scheduleAbsentFieldIds = new Set(
+      exceptionList.filter((entry) => entry && entry.code === "schedule-not-present").map((entry) => entry.fieldId)
+    );
+
+    const validatedNumericFieldCount = entries.filter((field) => field.parseStatus === "parsed").length;
+    const failedNumericFieldCount = entries.filter((field) => field.parseStatus === "failed").length;
+    const unresolvedNumericFieldCount = entries.filter(
+      (field, index) =>
+        field.parseStatus === "missing" &&
+        !maskedFieldIds.has(targeted[index].fieldId) &&
+        !scheduleAbsentFieldIds.has(targeted[index].fieldId)
+    ).length;
+    const maskedNumericFieldCount = Array.from(maskedFieldIds).filter((fieldId) => targetedFieldIds.has(fieldId)).length;
+    const notApplicableNumericFieldCount = Array.from(scheduleAbsentFieldIds).filter((fieldId) => targetedFieldIds.has(fieldId)).length;
+
+    let filingNumericSufficiency = "insufficient";
+    if (validatedNumericFieldCount && !failedNumericFieldCount && !unresolvedNumericFieldCount && !maskedNumericFieldCount) {
+      filingNumericSufficiency = "sufficient";
+    } else if (validatedNumericFieldCount) {
+      filingNumericSufficiency = "partial";
+    }
+
+    return {
+      targetedNumericFieldCount: targeted.length,
+      validatedNumericFieldCount,
+      maskedNumericFieldCount,
+      failedNumericFieldCount,
+      unresolvedNumericFieldCount,
+      notApplicableNumericFieldCount,
+      filingNumericSufficiency
+    };
+  }
+
+  function summarizeReviewState(exceptions) {
+    const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const counts = {
+      exceptionCount: exceptionList.length,
+      maskedCount: 0,
+      missingCount: 0,
+      failedCount: 0,
+      notApplicableCount: 0
+    };
+
+    exceptionList.forEach((entry) => {
+      if (!entry || !entry.code) {
+        return;
+      }
+      if (entry.code === "masked-numeric-evidence") {
+        counts.maskedCount += 1;
+      } else if (entry.code === "schedule-not-present") {
+        counts.notApplicableCount += 1;
+      } else if (entry.code === "parse-failed") {
+        counts.failedCount += 1;
+      } else if (entry.code === "missing") {
+        counts.missingCount += 1;
+      }
+    });
+
+    return counts;
+  }
+
   return {
     createEvidence,
     createException,
-    summarizeFieldMap
+    summarizeFieldMap,
+    summarizeNumericValidation,
+    summarizeReviewState
   };
 });
 
@@ -915,6 +1000,15 @@ window.__FORM5500_VENDOR__ = {
 
     const compactDigits = text.replace(/\D/g, "");
     if (compactDigits.length >= 9 && /(0123456789|1234567890|123456789012|012345678901)/.test(compactDigits)) {
+      return true;
+    }
+
+    if (compactDigits.length >= 6 && /^(\d)\1+$/.test(compactDigits)) {
+      return true;
+    }
+
+    const compactLetters = text.replace(/[^A-Za-z]/g, "");
+    if (compactLetters.length >= 6 && /^([A-Za-z])\1+$/i.test(compactLetters)) {
       return true;
     }
 
@@ -1253,6 +1347,10 @@ th {
   background: var(--accent-soft);
 }
 
+.summary-panel {
+  margin: 0 0 1rem;
+}
+
 .note {
   border-radius: 14px;
   padding: 0.8rem 0.9rem;
@@ -1444,6 +1542,7 @@ dialog::backdrop {
                 <button id="copy-csv-button" type="button" class="secondary">Copy CSV</button>
               </div>
             </div>
+            <div id="corpus-summary" class="summary-pills summary-panel" aria-live="polite"></div>
             <details class="column-chooser">
               <summary>Column chooser</summary>
               <div id="column-chooser-list" class="chooser-grid"></div>
@@ -1521,20 +1620,62 @@ dialog::backdrop {
 
   function findScheduleLinePair(joinedText, lineCode, labelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?(?:\\s*%?)?\\)?";
-    const regex = new RegExp(
-      `(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`,
-      "i"
-    );
-    const match = joinedText.match(regex);
-    if (!match || !match[pairIndex + 1]) {
-      return null;
+    const patterns = [
+      new RegExp(`(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i"),
+      new RegExp(`(?:^|\\n)(?:${labelPattern})[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i")
+    ];
+    for (const regex of patterns) {
+      const match = joinedText.match(regex);
+      if (match && match[pairIndex + 1]) {
+        return {
+          value: sanitizeExtractedText(match[pairIndex + 1]),
+          sourceLabel: lineCode,
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+        };
+      }
     }
-    return {
-      value: sanitizeExtractedText(match[pairIndex + 1]),
-      sourceLabel: lineCode,
-      sourcePage: null,
-      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
-    };
+    return null;
+  }
+
+  function findScheduleLinePairInLines(lines, lineCode, aliases, pairIndex) {
+    const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?(?:\s*%?)?\)?(?![A-Za-z])/g;
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      for (let lookahead = 1; lookahead <= 2; lookahead += 1) {
+        const candidate = lines[index + lookahead];
+        if (!candidate || !new RegExp(`\\b${lineCode}\\b`, "i").test(candidate)) {
+          continue;
+        }
+        const matches = candidate.match(numberPattern);
+        if (matches && matches[pairIndex]) {
+          return {
+            value: sanitizeExtractedText(matches[pairIndex]),
+            sourceLabel: lineCode,
+            sourcePage: null,
+            excerpt: `${sanitizeExtractedText(line)} ${sanitizeExtractedText(candidate)}`.slice(0, 500)
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  function isNumericType(dataType) {
+    return ["integer", "decimal", "currency", "percent"].includes(dataType);
+  }
+
+  function getSupportedSchedules(definition) {
+    if (Array.isArray(definition.supportedSchedules) && definition.supportedSchedules.length) {
+      return definition.supportedSchedules.map((schedule) => String(schedule || "").toUpperCase());
+    }
+    const requiredSchedule = definition.locationRef && definition.locationRef.schedule
+      ? String(definition.locationRef.schedule).toUpperCase()
+      : null;
+    return requiredSchedule ? [requiredSchedule] : [];
   }
 
   function findSingleValue(joinedText, aliases, valuePattern) {
@@ -1615,7 +1756,7 @@ dialog::backdrop {
   }
 
   function findTrailingLineCodeNumber(joinedText, labelPattern, lineCode) {
-    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
+    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
     if (!match) {
       return null;
     }
@@ -1627,8 +1768,18 @@ dialog::backdrop {
     };
   }
 
+  function findFirstTrailingLineCodeNumber(joinedText, variants) {
+    for (const variant of variants) {
+      const match = findTrailingLineCodeNumber(joinedText, variant.labelPattern, variant.lineCode);
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  }
+
   function findTrailingLineCodeValue(joinedText, labelPattern, lineCode, valuePattern) {
-    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
+    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
     if (!match) {
       return null;
     }
@@ -1712,41 +1863,65 @@ dialog::backdrop {
     rawMatches.businessCode =
       summaryMatches.businessCode ||
       findSingleValue(prepared.joinedText, ["business code \\(see instructions\\)", "business code"], "\\d{6}");
-    rawMatches.participantCountBeginningOfYear = findTrailingLineCodeNumber(
+    rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
+      { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
+    ]) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
+    rawMatches.retiredParticipantsReceivingBenefits = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "Retired or separated participants receiving benefits", lineCode: "6b" },
+      { labelPattern: "Retired or separated participants receiving benefits", lineCode: "6d" }
+    ]) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
+    rawMatches.separatedParticipantsEntitledToBenefits = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      {
+        labelPattern: "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+        lineCode: "6c"
+      },
+      {
+        labelPattern: "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+        lineCode: "6e"
+      }
+    ]) || findSingleValue(
       prepared.joinedText,
-      "5\\s+Total number of participants at the beginning of the plan year",
-      "5"
-    ) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
-    rawMatches.retiredParticipantsReceivingBenefits = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Retired or separated participants receiving benefits",
-      "6b"
-    ) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
-    rawMatches.separatedParticipantsEntitledToBenefits = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
-      "6c"
-    ) || findSingleValue(prepared.joinedText, ["separated participants entitled to future benefits"], "\\d[\\d,]*");
-    rawMatches.deceasedParticipantsBeneficiaries = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
-      "6e"
-    ) || findSingleValue(
+      ["other retired or separated participants entitled to future benefits", "separated participants entitled to future benefits"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.deceasedParticipantsBeneficiaries = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      {
+        labelPattern: "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+        lineCode: "6e"
+      },
+      {
+        labelPattern: "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+        lineCode: "6f"
+      }
+    ]) || findSingleValue(
       prepared.joinedText,
       ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits"],
       "\\d[\\d,]*"
     );
-    rawMatches.participantCountTotal = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Total\\. Add lines 6d and 6e",
-      "6f"
-    ) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
-    rawMatches.assetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0);
-    rawMatches.assetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1);
-    rawMatches.liabilitiesBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0);
-    rawMatches.liabilitiesEndOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1);
-    rawMatches.netAssetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0);
-    rawMatches.netAssetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1);
+    rawMatches.participantCountTotal = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "Total\\. Add lines 6d and 6e", lineCode: "6f" },
+      { labelPattern: "Total number of participants", lineCode: "6g" },
+      { labelPattern: "Total\\. Add lines 6e and 6f", lineCode: "6g" }
+    ]) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
+    rawMatches.assetsBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 0);
+    rawMatches.assetsEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 1);
+    rawMatches.liabilitiesBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 0);
+    rawMatches.liabilitiesEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 1);
+    rawMatches.netAssetsBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 0);
+    rawMatches.netAssetsEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 1);
     rawMatches.scheduleHAccountantOpinion = findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
@@ -1759,16 +1934,14 @@ dialog::backdrop {
 
     const fieldMap = {};
     schemaRegistry.forEach((definition) => {
-      const requiredSchedule = definition.locationRef && definition.locationRef.schedule
-        ? String(definition.locationRef.schedule).toUpperCase()
-        : null;
+      const supportedSchedules = getSupportedSchedules(definition);
       const matchDetails = rawMatches[definition.fieldId] || null;
-      if (requiredSchedule && !detectedSchedules.has(requiredSchedule)) {
+      if (supportedSchedules.length && !supportedSchedules.some((schedule) => detectedSchedules.has(schedule))) {
         fieldMap[definition.fieldId] = normalizeFieldValue(null, definition.dataType);
         exceptions.push({
           fieldId: definition.fieldId,
           code: "schedule-not-present",
-          message: `Schedule ${requiredSchedule} is not present in this filing package.`,
+          message: `Schedule ${supportedSchedules.join(" or ")} is not present in this filing package.`,
           sourcePage: null,
           sourceLabel: definition.name
         });
@@ -1787,11 +1960,14 @@ dialog::backdrop {
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
       } else {
+        const maskedNumericEvidence = isNumericType(definition.dataType) && matchDetails && isLikelyPlaceholderMatch(matchDetails);
         exceptions.push({
           fieldId: definition.fieldId,
-          code: fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
+          code: maskedNumericEvidence ? "masked-numeric-evidence" : fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
           message:
-            fieldValue.parseStatus === "failed"
+            maskedNumericEvidence
+              ? "The filing contains stand-in or masked numeric evidence for this field, so it does not count as validated numeric extraction."
+              : fieldValue.parseStatus === "failed"
               ? fieldValue.parseNotes || "Parser could not normalize the extracted value."
               : "No value was detected in the extracted PDF text.",
           sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,
@@ -2390,6 +2566,24 @@ dialog::backdrop {
       });
     }
 
+    if (qualityApi && typeof qualityApi.summarizeNumericValidation === "function") {
+      const numericValidation = qualityApi.summarizeNumericValidation(extracted.fields, schemaRegistry, extracted.extraction.exceptions);
+      extracted.metrics = {
+        ...extracted.metrics,
+        ...numericValidation
+      };
+      extracted.extraction.numericValidation = numericValidation;
+    }
+
+    if (qualityApi && typeof qualityApi.summarizeReviewState === "function") {
+      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions);
+      extracted.metrics = {
+        ...extracted.metrics,
+        ...reviewState
+      };
+      extracted.extraction.reviewState = reviewState;
+    }
+
     return extracted;
   }
 
@@ -2500,6 +2694,43 @@ dialog::backdrop {
     });
 
     return { rows, mandatoryColumns, additionalColumns };
+  }
+
+  function summarizeValidationCorpus(extractedRecords) {
+    const records = Array.isArray(extractedRecords) ? extractedRecords.slice() : [];
+    const totals = {
+      filingCount: records.length,
+      sufficientFilingCount: 0,
+      partialFilingCount: 0,
+      insufficientFilingCount: 0,
+      validatedNumericFieldCount: 0,
+      targetedNumericFieldCount: 0,
+      maskedNumericFieldCount: 0,
+      failedNumericFieldCount: 0,
+      unresolvedNumericFieldCount: 0,
+      notApplicableNumericFieldCount: 0
+    };
+
+    records.forEach((record) => {
+      const metrics = (record && record.metrics) || {};
+      const sufficiency = metrics.filingNumericSufficiency || "insufficient";
+      if (sufficiency === "sufficient") {
+        totals.sufficientFilingCount += 1;
+      } else if (sufficiency === "partial") {
+        totals.partialFilingCount += 1;
+      } else {
+        totals.insufficientFilingCount += 1;
+      }
+
+      totals.validatedNumericFieldCount += Number(metrics.validatedNumericFieldCount || 0);
+      totals.targetedNumericFieldCount += Number(metrics.targetedNumericFieldCount || 0);
+      totals.maskedNumericFieldCount += Number(metrics.maskedNumericFieldCount || 0);
+      totals.failedNumericFieldCount += Number(metrics.failedNumericFieldCount || 0);
+      totals.unresolvedNumericFieldCount += Number(metrics.unresolvedNumericFieldCount || 0);
+      totals.notApplicableNumericFieldCount += Number(metrics.notApplicableNumericFieldCount || 0);
+    });
+
+    return totals;
   }
 
   function toCsv(columns, rows) {
@@ -2638,6 +2869,7 @@ dialog::backdrop {
     normalizeFieldValue,
     parseCsv,
     quoteCsvCell,
+    summarizeValidationCorpus,
     toCsv
   };
 });
@@ -2688,6 +2920,7 @@ dialog::backdrop {
     downloadNowButton: document.getElementById("download-now-button"),
     queueSummary: document.getElementById("queue-summary"),
     queueTableBody: document.getElementById("queue-table-body"),
+    corpusSummary: document.getElementById("corpus-summary"),
     allYearsHeadRow: document.getElementById("all-years-head-row"),
     allYearsBody: document.getElementById("all-years-body"),
     downloadCsvButton: document.getElementById("download-csv-button"),
@@ -2775,8 +3008,35 @@ dialog::backdrop {
       parsedFieldCount: extracted.metrics.parsedFieldCount,
       expectedFieldCount: extracted.metrics.expectedFieldCount,
       exceptionCount: exceptions.length,
-      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId)
+      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId),
+      filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
+      validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
+      targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
+      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0,
+      missingCount: extracted.metrics.missingCount || 0,
+      failedCount: extracted.metrics.failedCount || 0,
+      notApplicableCount: extracted.metrics.notApplicableCount || 0
     };
+  }
+
+  function describeExtractionSummary(summary) {
+    if (!summary) {
+      return "";
+    }
+    const parts = [];
+    if (summary.maskedNumericFieldCount) {
+      parts.push(`${summary.maskedNumericFieldCount} masked`);
+    }
+    if (summary.failedCount) {
+      parts.push(`${summary.failedCount} failed`);
+    }
+    if (summary.missingCount) {
+      parts.push(`${summary.missingCount} unresolved`);
+    }
+    if (summary.notApplicableCount) {
+      parts.push(`${summary.notApplicableCount} not applicable`);
+    }
+    return parts.join(", ");
   }
 
   function syncExtractedForItem(item) {
@@ -2849,7 +3109,8 @@ dialog::backdrop {
         item.errorMessage = ocrResult.message;
       } else if (item.extractionSummary && item.extractionSummary.exceptionCount) {
         item.status = "ready-with-exceptions";
-        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields with unresolved values.`;
+        const reviewDetail = describeExtractionSummary(item.extractionSummary);
+        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.${reviewDetail ? ` Review: ${reviewDetail}.` : ""}`;
       } else {
         item.status = "ready";
         item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.`;
@@ -3062,6 +3323,20 @@ dialog::backdrop {
           ? `<div class="muted">Extraction: ${sanitizeHtml(
               `${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} parsed`
             )}</div>${
+              item.extractionSummary.targetedNumericFieldCount
+                ? `<div class="muted">Numeric validation: ${sanitizeHtml(
+                    `${item.extractionSummary.validatedNumericFieldCount}/${item.extractionSummary.targetedNumericFieldCount} ${item.extractionSummary.filingNumericSufficiency}`
+                  )}${
+                    item.extractionSummary.maskedNumericFieldCount
+                      ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
+                      : ""
+                  }</div>`
+                : ""
+            }${
+              describeExtractionSummary(item.extractionSummary)
+                ? `<div class="muted">Review state: ${sanitizeHtml(describeExtractionSummary(item.extractionSummary))}</div>`
+                : ""
+            }${
               item.extractionSummary.unresolvedFieldIds.length
                 ? `<div class="muted">Unresolved: ${sanitizeHtml(item.extractionSummary.unresolvedFieldIds.join(", "))}</div>`
                 : ""
@@ -3104,10 +3379,32 @@ dialog::backdrop {
 
   function renderAllYears() {
     const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const corpusSummary = core.summarizeValidationCorpus(Object.values(state.extractedById));
     const visibleColumns = [
       ...aggregated.mandatoryColumns,
       ...aggregated.additionalColumns.filter((column) => state.settings.visibleAdditionalColumns.includes(column.key))
     ];
+
+    elements.corpusSummary.innerHTML = aggregated.rows.length
+      ? [
+          `<span class="pill">filings: ${corpusSummary.filingCount}</span>`,
+          `<span class="pill">sufficient: ${corpusSummary.sufficientFilingCount}</span>`,
+          `<span class="pill">partial: ${corpusSummary.partialFilingCount}</span>`,
+          `<span class="pill">insufficient: ${corpusSummary.insufficientFilingCount}</span>`,
+          `<span class="pill">numeric validated: ${corpusSummary.validatedNumericFieldCount}/${corpusSummary.targetedNumericFieldCount || 0}</span>`,
+          corpusSummary.maskedNumericFieldCount
+            ? `<span class="pill">masked: ${corpusSummary.maskedNumericFieldCount}</span>`
+            : "",
+          corpusSummary.failedNumericFieldCount
+            ? `<span class="pill">failed: ${corpusSummary.failedNumericFieldCount}</span>`
+            : "",
+          corpusSummary.unresolvedNumericFieldCount
+            ? `<span class="pill">unresolved: ${corpusSummary.unresolvedNumericFieldCount}</span>`
+            : ""
+        ]
+          .filter(Boolean)
+          .join("")
+      : `<span class="muted">No validation corpus summary yet.</span>`;
 
     elements.allYearsHeadRow.innerHTML = visibleColumns.map((column) => `<th>${sanitizeHtml(column.label)}</th>`).join("");
 
