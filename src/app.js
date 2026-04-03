@@ -43,6 +43,7 @@
     downloadNowButton: document.getElementById("download-now-button"),
     queueSummary: document.getElementById("queue-summary"),
     queueTableBody: document.getElementById("queue-table-body"),
+    corpusSummary: document.getElementById("corpus-summary"),
     allYearsHeadRow: document.getElementById("all-years-head-row"),
     allYearsBody: document.getElementById("all-years-body"),
     downloadCsvButton: document.getElementById("download-csv-button"),
@@ -130,8 +131,35 @@
       parsedFieldCount: extracted.metrics.parsedFieldCount,
       expectedFieldCount: extracted.metrics.expectedFieldCount,
       exceptionCount: exceptions.length,
-      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId)
+      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId),
+      filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
+      validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
+      targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
+      maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0,
+      missingCount: extracted.metrics.missingCount || 0,
+      failedCount: extracted.metrics.failedCount || 0,
+      notApplicableCount: extracted.metrics.notApplicableCount || 0
     };
+  }
+
+  function describeExtractionSummary(summary) {
+    if (!summary) {
+      return "";
+    }
+    const parts = [];
+    if (summary.maskedNumericFieldCount) {
+      parts.push(`${summary.maskedNumericFieldCount} masked`);
+    }
+    if (summary.failedCount) {
+      parts.push(`${summary.failedCount} failed`);
+    }
+    if (summary.missingCount) {
+      parts.push(`${summary.missingCount} unresolved`);
+    }
+    if (summary.notApplicableCount) {
+      parts.push(`${summary.notApplicableCount} not applicable`);
+    }
+    return parts.join(", ");
   }
 
   function syncExtractedForItem(item) {
@@ -204,7 +232,8 @@
         item.errorMessage = ocrResult.message;
       } else if (item.extractionSummary && item.extractionSummary.exceptionCount) {
         item.status = "ready-with-exceptions";
-        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields with unresolved values.`;
+        const reviewDetail = describeExtractionSummary(item.extractionSummary);
+        item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.${reviewDetail ? ` Review: ${reviewDetail}.` : ""}`;
       } else {
         item.status = "ready";
         item.errorMessage = `Parsed ${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} fields.`;
@@ -417,6 +446,20 @@
           ? `<div class="muted">Extraction: ${sanitizeHtml(
               `${item.extractionSummary.parsedFieldCount}/${item.extractionSummary.expectedFieldCount} parsed`
             )}</div>${
+              item.extractionSummary.targetedNumericFieldCount
+                ? `<div class="muted">Numeric validation: ${sanitizeHtml(
+                    `${item.extractionSummary.validatedNumericFieldCount}/${item.extractionSummary.targetedNumericFieldCount} ${item.extractionSummary.filingNumericSufficiency}`
+                  )}${
+                    item.extractionSummary.maskedNumericFieldCount
+                      ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
+                      : ""
+                  }</div>`
+                : ""
+            }${
+              describeExtractionSummary(item.extractionSummary)
+                ? `<div class="muted">Review state: ${sanitizeHtml(describeExtractionSummary(item.extractionSummary))}</div>`
+                : ""
+            }${
               item.extractionSummary.unresolvedFieldIds.length
                 ? `<div class="muted">Unresolved: ${sanitizeHtml(item.extractionSummary.unresolvedFieldIds.join(", "))}</div>`
                 : ""
@@ -459,10 +502,32 @@
 
   function renderAllYears() {
     const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+    const corpusSummary = core.summarizeValidationCorpus(Object.values(state.extractedById));
     const visibleColumns = [
       ...aggregated.mandatoryColumns,
       ...aggregated.additionalColumns.filter((column) => state.settings.visibleAdditionalColumns.includes(column.key))
     ];
+
+    elements.corpusSummary.innerHTML = aggregated.rows.length
+      ? [
+          `<span class="pill">filings: ${corpusSummary.filingCount}</span>`,
+          `<span class="pill">sufficient: ${corpusSummary.sufficientFilingCount}</span>`,
+          `<span class="pill">partial: ${corpusSummary.partialFilingCount}</span>`,
+          `<span class="pill">insufficient: ${corpusSummary.insufficientFilingCount}</span>`,
+          `<span class="pill">numeric validated: ${corpusSummary.validatedNumericFieldCount}/${corpusSummary.targetedNumericFieldCount || 0}</span>`,
+          corpusSummary.maskedNumericFieldCount
+            ? `<span class="pill">masked: ${corpusSummary.maskedNumericFieldCount}</span>`
+            : "",
+          corpusSummary.failedNumericFieldCount
+            ? `<span class="pill">failed: ${corpusSummary.failedNumericFieldCount}</span>`
+            : "",
+          corpusSummary.unresolvedNumericFieldCount
+            ? `<span class="pill">unresolved: ${corpusSummary.unresolvedNumericFieldCount}</span>`
+            : ""
+        ]
+          .filter(Boolean)
+          .join("")
+      : `<span class="muted">No validation corpus summary yet.</span>`;
 
     elements.allYearsHeadRow.innerHTML = visibleColumns.map((column) => `<th>${sanitizeHtml(column.label)}</th>`).join("");
 

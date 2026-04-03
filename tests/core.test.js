@@ -75,3 +75,82 @@ test("EFAST CSV ingestion keeps detail-page links metadata-only when no direct P
   assert.equal(result.records[0].remoteUrl, null);
   assert.equal(result.records[0].metadata.detailUrl, "https://example.com/filing/detail?id=42");
 });
+
+test("validation corpus summary is deterministic across mixed filing sufficiency states", () => {
+  const sufficient = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan A",
+      planNumber: "001",
+      sponsorEmployerIdentificationNumber: "111111111",
+      planYearBeginDate: "2023-01-01",
+      planYearEndDate: "2023-12-31"
+    },
+    { ingestId: "ing-1", ingestionTimestamp: "2024-02-01T00:00:00Z" }
+  );
+  sufficient.metrics = {
+    ...sufficient.metrics,
+    filingNumericSufficiency: "sufficient",
+    validatedNumericFieldCount: 8,
+    targetedNumericFieldCount: 8,
+    maskedNumericFieldCount: 0,
+    failedNumericFieldCount: 0,
+    unresolvedNumericFieldCount: 0,
+    notApplicableNumericFieldCount: 0
+  };
+
+  const partial = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan B",
+      planNumber: "002",
+      sponsorEmployerIdentificationNumber: "222222222",
+      planYearBeginDate: "2022-01-01",
+      planYearEndDate: "2022-12-31"
+    },
+    { ingestId: "ing-2", ingestionTimestamp: "2024-02-01T00:00:00Z" }
+  );
+  partial.metrics = {
+    ...partial.metrics,
+    filingNumericSufficiency: "partial",
+    validatedNumericFieldCount: 5,
+    targetedNumericFieldCount: 8,
+    maskedNumericFieldCount: 2,
+    failedNumericFieldCount: 0,
+    unresolvedNumericFieldCount: 1,
+    notApplicableNumericFieldCount: 0
+  };
+
+  const insufficient = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan C",
+      planNumber: "003",
+      sponsorEmployerIdentificationNumber: "333333333",
+      planYearBeginDate: "2021-01-01",
+      planYearEndDate: "2021-12-31"
+    },
+    { ingestId: "ing-3", ingestionTimestamp: "2024-02-01T00:00:00Z" }
+  );
+  insufficient.metrics = {
+    ...insufficient.metrics,
+    filingNumericSufficiency: "insufficient",
+    validatedNumericFieldCount: 0,
+    targetedNumericFieldCount: 8,
+    maskedNumericFieldCount: 3,
+    failedNumericFieldCount: 1,
+    unresolvedNumericFieldCount: 4,
+    notApplicableNumericFieldCount: 0
+  };
+
+  const summary = core.summarizeValidationCorpus([partial, sufficient, insufficient]);
+  assert.deepEqual(summary, {
+    filingCount: 3,
+    sufficientFilingCount: 1,
+    partialFilingCount: 1,
+    insufficientFilingCount: 1,
+    validatedNumericFieldCount: 13,
+    targetedNumericFieldCount: 24,
+    maskedNumericFieldCount: 5,
+    failedNumericFieldCount: 1,
+    unresolvedNumericFieldCount: 5,
+    notApplicableNumericFieldCount: 0
+  });
+});

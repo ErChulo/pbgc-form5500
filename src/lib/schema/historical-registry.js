@@ -139,6 +139,7 @@
       headerLabel: "assetsBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 1a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 40
     },
@@ -148,6 +149,7 @@
       headerLabel: "assetsEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 1b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 41
     },
@@ -157,6 +159,7 @@
       headerLabel: "liabilitiesBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 2a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 42
     },
@@ -166,6 +169,7 @@
       headerLabel: "liabilitiesEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 2b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 43
     },
@@ -175,6 +179,7 @@
       headerLabel: "netAssetsBeginningOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 3a", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 44
     },
@@ -184,6 +189,7 @@
       headerLabel: "netAssetsEndOfYear",
       dataType: "currency",
       locationRef: { form: "Form 5500", schedule: "H", part: "Part I", line: "Line 3b", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
       exportGroup: "allYears",
       exportOrder: 45
     },

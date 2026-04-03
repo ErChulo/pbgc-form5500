@@ -48,6 +48,15 @@
       return true;
     }
 
+    if (compactDigits.length >= 6 && /^(\d)\1+$/.test(compactDigits)) {
+      return true;
+    }
+
+    const compactLetters = text.replace(/[^A-Za-z]/g, "");
+    if (compactLetters.length >= 6 && /^([A-Za-z])\1+$/i.test(compactLetters)) {
+      return true;
+    }
+
     return false;
   }
 
@@ -133,20 +142,62 @@
 
   function findScheduleLinePair(joinedText, lineCode, labelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?(?:\\s*%?)?\\)?";
-    const regex = new RegExp(
-      `(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`,
-      "i"
-    );
-    const match = joinedText.match(regex);
-    if (!match || !match[pairIndex + 1]) {
-      return null;
+    const patterns = [
+      new RegExp(`(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i"),
+      new RegExp(`(?:^|\\n)(?:${labelPattern})[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i")
+    ];
+    for (const regex of patterns) {
+      const match = joinedText.match(regex);
+      if (match && match[pairIndex + 1]) {
+        return {
+          value: sanitizeExtractedText(match[pairIndex + 1]),
+          sourceLabel: lineCode,
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+        };
+      }
     }
-    return {
-      value: sanitizeExtractedText(match[pairIndex + 1]),
-      sourceLabel: lineCode,
-      sourcePage: null,
-      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
-    };
+    return null;
+  }
+
+  function findScheduleLinePairInLines(lines, lineCode, aliases, pairIndex) {
+    const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?(?:\s*%?)?\)?(?![A-Za-z])/g;
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      for (let lookahead = 1; lookahead <= 2; lookahead += 1) {
+        const candidate = lines[index + lookahead];
+        if (!candidate || !new RegExp(`\\b${lineCode}\\b`, "i").test(candidate)) {
+          continue;
+        }
+        const matches = candidate.match(numberPattern);
+        if (matches && matches[pairIndex]) {
+          return {
+            value: sanitizeExtractedText(matches[pairIndex]),
+            sourceLabel: lineCode,
+            sourcePage: null,
+            excerpt: `${sanitizeExtractedText(line)} ${sanitizeExtractedText(candidate)}`.slice(0, 500)
+          };
+        }
+      }
+    }
+    return null;
+  }
+
+  function isNumericType(dataType) {
+    return ["integer", "decimal", "currency", "percent"].includes(dataType);
+  }
+
+  function getSupportedSchedules(definition) {
+    if (Array.isArray(definition.supportedSchedules) && definition.supportedSchedules.length) {
+      return definition.supportedSchedules.map((schedule) => String(schedule || "").toUpperCase());
+    }
+    const requiredSchedule = definition.locationRef && definition.locationRef.schedule
+      ? String(definition.locationRef.schedule).toUpperCase()
+      : null;
+    return requiredSchedule ? [requiredSchedule] : [];
   }
 
   function findSingleValue(joinedText, aliases, valuePattern) {
@@ -227,7 +278,7 @@
   }
 
   function findTrailingLineCodeNumber(joinedText, labelPattern, lineCode) {
-    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
+    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
     if (!match) {
       return null;
     }
@@ -239,8 +290,18 @@
     };
   }
 
+  function findFirstTrailingLineCodeNumber(joinedText, variants) {
+    for (const variant of variants) {
+      const match = findTrailingLineCodeNumber(joinedText, variant.labelPattern, variant.lineCode);
+      if (match) {
+        return match;
+      }
+    }
+    return null;
+  }
+
   function findTrailingLineCodeValue(joinedText, labelPattern, lineCode, valuePattern) {
-    const match = joinedText.match(new RegExp(`${labelPattern}[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
+    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
     if (!match) {
       return null;
     }
@@ -324,41 +385,65 @@
     rawMatches.businessCode =
       summaryMatches.businessCode ||
       findSingleValue(prepared.joinedText, ["business code \\(see instructions\\)", "business code"], "\\d{6}");
-    rawMatches.participantCountBeginningOfYear = findTrailingLineCodeNumber(
+    rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
+      { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
+    ]) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
+    rawMatches.retiredParticipantsReceivingBenefits = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "Retired or separated participants receiving benefits", lineCode: "6b" },
+      { labelPattern: "Retired or separated participants receiving benefits", lineCode: "6d" }
+    ]) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
+    rawMatches.separatedParticipantsEntitledToBenefits = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      {
+        labelPattern: "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+        lineCode: "6c"
+      },
+      {
+        labelPattern: "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
+        lineCode: "6e"
+      }
+    ]) || findSingleValue(
       prepared.joinedText,
-      "5\\s+Total number of participants at the beginning of the plan year",
-      "5"
-    ) || findSingleValue(prepared.joinedText, ["participants at the beginning of the plan year"], "\\d[\\d,]*");
-    rawMatches.retiredParticipantsReceivingBenefits = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Retired or separated participants receiving benefits",
-      "6b"
-    ) || findSingleValue(prepared.joinedText, ["retired or separated participants receiving benefits"], "\\d[\\d,]*");
-    rawMatches.separatedParticipantsEntitledToBenefits = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Other retired or separated participants entitled to future benefits|Separated participants entitled to future benefits",
-      "6c"
-    ) || findSingleValue(prepared.joinedText, ["separated participants entitled to future benefits"], "\\d[\\d,]*");
-    rawMatches.deceasedParticipantsBeneficiaries = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
-      "6e"
-    ) || findSingleValue(
+      ["other retired or separated participants entitled to future benefits", "separated participants entitled to future benefits"],
+      "\\d[\\d,]*"
+    );
+    rawMatches.deceasedParticipantsBeneficiaries = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      {
+        labelPattern: "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+        lineCode: "6e"
+      },
+      {
+        labelPattern: "Deceased participants whose beneficiaries are receiving or are entitled to receive benefits",
+        lineCode: "6f"
+      }
+    ]) || findSingleValue(
       prepared.joinedText,
       ["deceased participants whose beneficiaries are receiving or are entitled to receive benefits"],
       "\\d[\\d,]*"
     );
-    rawMatches.participantCountTotal = findTrailingLineCodeNumber(
-      prepared.joinedText,
-      "Total\\. Add lines 6d and 6e",
-      "6f"
-    ) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
-    rawMatches.assetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0);
-    rawMatches.assetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1);
-    rawMatches.liabilitiesBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0);
-    rawMatches.liabilitiesEndOfYear = findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1);
-    rawMatches.netAssetsBeginningOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0);
-    rawMatches.netAssetsEndOfYear = findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1);
+    rawMatches.participantCountTotal = findFirstTrailingLineCodeNumber(prepared.joinedText, [
+      { labelPattern: "Total\\. Add lines 6d and 6e", lineCode: "6f" },
+      { labelPattern: "Total number of participants", lineCode: "6g" },
+      { labelPattern: "Total\\. Add lines 6e and 6f", lineCode: "6g" }
+    ]) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
+    rawMatches.assetsBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 0);
+    rawMatches.assetsEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 1);
+    rawMatches.liabilitiesBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 0);
+    rawMatches.liabilitiesEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 1);
+    rawMatches.netAssetsBeginningOfYear =
+      findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0) ||
+      findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 0);
+    rawMatches.netAssetsEndOfYear =
+      findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1) ||
+      findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 1);
     rawMatches.scheduleHAccountantOpinion = findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
@@ -371,16 +456,14 @@
 
     const fieldMap = {};
     schemaRegistry.forEach((definition) => {
-      const requiredSchedule = definition.locationRef && definition.locationRef.schedule
-        ? String(definition.locationRef.schedule).toUpperCase()
-        : null;
+      const supportedSchedules = getSupportedSchedules(definition);
       const matchDetails = rawMatches[definition.fieldId] || null;
-      if (requiredSchedule && !detectedSchedules.has(requiredSchedule)) {
+      if (supportedSchedules.length && !supportedSchedules.some((schedule) => detectedSchedules.has(schedule))) {
         fieldMap[definition.fieldId] = normalizeFieldValue(null, definition.dataType);
         exceptions.push({
           fieldId: definition.fieldId,
           code: "schedule-not-present",
-          message: `Schedule ${requiredSchedule} is not present in this filing package.`,
+          message: `Schedule ${supportedSchedules.join(" or ")} is not present in this filing package.`,
           sourcePage: null,
           sourceLabel: definition.name
         });
@@ -399,11 +482,14 @@
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
       } else {
+        const maskedNumericEvidence = isNumericType(definition.dataType) && matchDetails && isLikelyPlaceholderMatch(matchDetails);
         exceptions.push({
           fieldId: definition.fieldId,
-          code: fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
+          code: maskedNumericEvidence ? "masked-numeric-evidence" : fieldValue.parseStatus === "failed" ? "parse-failed" : "missing",
           message:
-            fieldValue.parseStatus === "failed"
+            maskedNumericEvidence
+              ? "The filing contains stand-in or masked numeric evidence for this field, so it does not count as validated numeric extraction."
+              : fieldValue.parseStatus === "failed"
               ? fieldValue.parseNotes || "Parser could not normalize the extracted value."
               : "No value was detected in the extracted PDF text.",
           sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,

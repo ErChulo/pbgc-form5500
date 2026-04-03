@@ -135,6 +135,81 @@ test("schedule h row-coded values are preferred over table-of-contents noise", (
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
 });
 
+test("schedule numeric rows parse when the label precedes the line code", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2022 and ending 12/31/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "Total assets (add all amounts in lines 1a through 1e) 1f 1,000,000 1,250,000",
+    "Total liabilities (add all amounts in lines 1g through 1j) 1k 100,000 120,000",
+    "Net assets available for plan benefits (subtract line 1k from line 1f) 1l 900,000 1,130,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000e",
+      ingestionTimestamp: "2026-04-01T00:00:00Z",
+      fileName: "northwind-2022-label-first.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.assetsBeginningOfYear.valueNumber, "1000000");
+  assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "1250000");
+  assert.equal(extracted.fields.liabilitiesBeginningOfYear.valueNumber, "100000");
+  assert.equal(extracted.fields.liabilitiesEndOfYear.valueNumber, "120000");
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "900000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
+});
+
+test("schedule numeric rows parse when values are split onto the next line", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2022 and ending 12/31/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "Total assets (add all amounts in lines 1a through 1e)",
+    "1f 1,000,000 1,250,000",
+    "Total liabilities (add all amounts in lines 1g through 1j)",
+    "1k 100,000 120,000",
+    "Net assets available for plan benefits (subtract line 1k from line 1f)",
+    "1l 900,000 1,130,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000f",
+      ingestionTimestamp: "2026-04-02T00:00:00Z",
+      fileName: "northwind-2022-split-rows.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.assetsBeginningOfYear.valueNumber, "1000000");
+  assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "1250000");
+  assert.equal(extracted.fields.liabilitiesBeginningOfYear.valueNumber, "100000");
+  assert.equal(extracted.fields.liabilitiesEndOfYear.valueNumber, "120000");
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "900000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
+});
+
 test("redacted schedule placeholders are treated as missing instead of parsed values", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",
@@ -167,6 +242,48 @@ test("redacted schedule placeholders are treated as missing instead of parsed va
   assert.equal(extracted.fields.netAssetsBeginningOfYear.parseStatus, "missing");
   assert.equal(extracted.fields.netAssetsEndOfYear.parseStatus, "missing");
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.parseStatus, "missing");
+  assert.equal(extracted.metrics.maskedNumericFieldCount, 3);
+  assert.equal(extracted.metrics.filingNumericSufficiency, "insufficient");
+  assert.equal(extracted.metrics.maskedCount, 3);
+});
+
+test("placeholder participant counts are treated as masked numeric evidence", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "5 Total number of participants at the beginning of the plan year 5 123456789012",
+    "b Retired or separated participants receiving benefits 6b 123456789012",
+    "c Other retired or separated participants entitled to future benefits 6c 123456789012",
+    "e Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6e 123456789012",
+    "f Total. Add lines 6d and 6e . 6f 123456789012"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000e",
+      ingestionTimestamp: "2026-04-02T00:00:00Z",
+      fileName: "northwind-2024-placeholder-participants.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.participantCountBeginningOfYear.parseStatus, "missing");
+  assert.equal(extracted.fields.retiredParticipantsReceivingBenefits.parseStatus, "missing");
+  assert.equal(extracted.fields.separatedParticipantsEntitledToBenefits.parseStatus, "missing");
+  assert.equal(extracted.fields.deceasedParticipantsBeneficiaries.parseStatus, "missing");
+  assert.equal(extracted.fields.participantCountTotal.parseStatus, "missing");
+  assert.equal(extracted.metrics.maskedNumericFieldCount, 5);
+  assert.equal(extracted.metrics.maskedCount, 5);
+  assert.equal(extracted.metrics.filingNumericSufficiency, "insufficient");
 });
 
 test("schedule-bound fields are marked not present when the filing omits that schedule", () => {
@@ -196,8 +313,92 @@ test("schedule-bound fields are marked not present when the filing omits that sc
   const scheduleHException = extracted.extraction.exceptions.find((entry) => entry.fieldId === "assetsBeginningOfYear");
   assert.ok(scheduleHException);
   assert.equal(scheduleHException.code, "schedule-not-present");
-  assert.match(scheduleHException.message, /Schedule H is not present/i);
+  assert.match(scheduleHException.message, /Schedule H or I is not present/i);
   assert.equal(extracted.fields.assetsBeginningOfYear.parseStatus, "missing");
+  assert.ok(extracted.metrics.notApplicableCount >= 1);
+});
+
+test("schedule i numeric rows satisfy canonical asset fields and numeric validation summary", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2023 and ending 12/31/2023",
+    "Name of plan",
+    "Harbor Services Pension Plan",
+    "Plan number 002",
+    "Employer identification number 11-2233445",
+    "5 Total number of participants at the beginning of the plan year 5 85",
+    "b Retired or separated participants receiving benefits 6b 12",
+    "c Other retired or separated participants entitled to future benefits 6c 8",
+    "e Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6e 1",
+    "f Total. Add lines 6d and 6e . 6f 21",
+    "Schedule I",
+    "Schedule SB",
+    "1f Total assets (add all amounts in lines 1a through 1e) 1f 250,000 300,000",
+    "1k Total liabilities (add all amounts in lines 1g through 1j) 1k 20,000 35,000",
+    "1l Net assets (subtract line 1k from line 1f) 1l 230,000 265,000",
+    "14 Funding target attainment percentage................................................................ 14 82.5 %"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1002",
+      ingestionTimestamp: "2026-04-01T00:00:00Z",
+      fileName: "harbor-2023.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.assetsBeginningOfYear.valueNumber, "250000");
+  assert.equal(extracted.fields.assetsEndOfYear.valueNumber, "300000");
+  assert.equal(extracted.fields.liabilitiesBeginningOfYear.valueNumber, "20000");
+  assert.equal(extracted.fields.liabilitiesEndOfYear.valueNumber, "35000");
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "230000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "265000");
+  assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "85");
+  assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.825");
+  assert.equal(extracted.metrics.filingNumericSufficiency, "sufficient");
+  assert.ok(extracted.metrics.validatedNumericFieldCount >= 8);
+});
+
+test("participant line variants with 6a and 6g style codes are parsed", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "a Total number of participants at the beginning of the plan year 6a 410",
+    "d Retired or separated participants receiving benefits 6d 39",
+    "e Other retired or separated participants entitled to future benefits 6e 28",
+    "f Deceased participants whose beneficiaries are receiving or are entitled to receive benefits 6f 3",
+    "g Total number of participants 6g 480"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1003",
+      ingestionTimestamp: "2026-04-01T00:00:00Z",
+      fileName: "variant-2024.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "410");
+  assert.equal(extracted.fields.retiredParticipantsReceivingBenefits.valueNumber, "39");
+  assert.equal(extracted.fields.separatedParticipantsEntitledToBenefits.valueNumber, "28");
+  assert.equal(extracted.fields.deceasedParticipantsBeneficiaries.valueNumber, "3");
+  assert.equal(extracted.fields.participantCountTotal.valueNumber, "480");
 });
 
 test("all-years aggregation carries expanded schema fields into exported rows", () => {
