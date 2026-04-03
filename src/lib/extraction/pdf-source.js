@@ -58,9 +58,23 @@
         .join(" ")
         .replace(/[ ]+/g, " ")
         .trim();
+      let imageDataUrl = null;
+      if (!pageText && typeof document !== "undefined") {
+        const viewport = page.getViewport({ scale: settings.ocrRenderScale || 2 });
+        const canvas = document.createElement("canvas");
+        const context = canvas.getContext("2d", { willReadFrequently: false });
+        canvas.width = Math.max(1, Math.ceil(viewport.width));
+        canvas.height = Math.max(1, Math.ceil(viewport.height));
+        await page.render({
+          canvasContext: context,
+          viewport
+        }).promise;
+        imageDataUrl = canvas.toDataURL("image/png");
+      }
       pages.push({
         pageNumber: pageIndex,
-        text: pageText
+        text: pageText,
+        imageDataUrl
       });
       if (pageText) {
         textParts.push(pageText);

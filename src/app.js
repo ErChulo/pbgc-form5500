@@ -217,7 +217,22 @@
         });
       }
 
-      const extracted = core.buildExtractedFromPdfData(pdfData, {
+      const effectivePdfData =
+        ocrResult && ocrResult.status === "ok" && ocrResult.text
+          ? {
+              ...pdfData,
+              documentText: ocrResult.text,
+              pages: Array.isArray(ocrResult.pages)
+                ? ocrResult.pages.map((page) => ({
+                    pageNumber: page.pageNumber,
+                    text: page.text || ""
+                  }))
+                : pdfData.pages,
+              textSource: "ocr"
+            }
+          : pdfData;
+
+      const extracted = core.buildExtractedFromPdfData(effectivePdfData, {
         ingestId: item.id,
         ingestionTimestamp: item.ingestionTimestamp,
         schemaRegistry: state.schemaRegistry,
@@ -229,6 +244,9 @@
       if (ocrResult && ocrResult.status !== "ok") {
         item.status = "ocr-manual-review";
         item.errorClass = ocrResult.status;
+        item.errorMessage = ocrResult.message;
+      } else if (ocrResult && ocrResult.status === "ok") {
+        item.status = item.extractionSummary && item.extractionSummary.exceptionCount ? "ready-with-exceptions" : "ready";
         item.errorMessage = ocrResult.message;
       } else if (item.extractionSummary && item.extractionSummary.exceptionCount) {
         item.status = "ready-with-exceptions";
