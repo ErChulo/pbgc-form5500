@@ -536,7 +536,11 @@ window.__FORM5500_VENDOR__ = {
   const codeLists = {
     filingKind: ["original", "amended", "final", "amended final"],
     yesNo: ["yes", "no"],
-    planEntityCodes: ["large", "small", "direct filing entity"]
+    planEntityCodes: ["large", "small", "direct filing entity"],
+    scheduleCodes: ["A", "C", "D", "G", "H", "I", "MB", "R", "SB"],
+    sourceTypes: ["main-form", "schedule", "financial-statement", "actuarial-attachment", "other-attachment", "unknown"],
+    reviewStateCodes: ["parsed", "missing", "masked", "conflicting", "failed", "not-applicable"],
+    attachmentFamilies: ["auditor-report", "audited-financial-statements", "actuarial-attachment", "supplemental-schedule"]
   };
 
   function getCodeList(codeListId) {
@@ -771,6 +775,143 @@ window.__FORM5500_VENDOR__ = {
       locationRef: { form: "Form 5500", schedule: "SB", part: "Part I", line: "Line 27", instructionsYear: 2024 },
       exportGroup: "allYears",
       exportOrder: 47
+    },
+    {
+      fieldId: "planEffectiveDate",
+      name: "planEffectiveDate",
+      headerLabel: "planEffectiveDate",
+      dataType: "date",
+      locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 1c", instructionsYear: 2024 },
+      exportGroup: "allYears",
+      exportOrder: 48
+    },
+    {
+      fieldId: "sponsorTelephoneNumber",
+      name: "sponsorTelephoneNumber",
+      headerLabel: "sponsorTelephoneNumber",
+      dataType: "text",
+      locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 2c", instructionsYear: 2024 },
+      exportGroup: "allYears",
+      exportOrder: 49
+    },
+    {
+      fieldId: "planAdministratorSameAsSponsor",
+      name: "planAdministratorSameAsSponsor",
+      headerLabel: "planAdministratorSameAsSponsor",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 3a", instructionsYear: 2024 },
+      exportGroup: "allYears",
+      exportOrder: 50
+    },
+    {
+      fieldId: "insuranceInForce",
+      name: "insuranceInForce",
+      headerLabel: "insuranceInForce",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: "A", part: "Part I", line: "Line 1", instructionsYear: 2024 },
+      supportedSchedules: ["A"],
+      exportGroup: "allYears",
+      exportOrder: 60
+    },
+    {
+      fieldId: "serviceProviderCompensationIndirect",
+      name: "serviceProviderCompensationIndirect",
+      headerLabel: "serviceProviderCompensationIndirect",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: "C", part: "Part I", line: "Line 2", instructionsYear: 2024 },
+      supportedSchedules: ["C"],
+      exportGroup: "allYears",
+      exportOrder: 61
+    },
+    {
+      fieldId: "reportableTransactionsPresent",
+      name: "reportableTransactionsPresent",
+      headerLabel: "reportableTransactionsPresent",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: "G", part: "Part III", line: "Line 1", instructionsYear: 2024 },
+      supportedSchedules: ["G", "H"],
+      exportGroup: "allYears",
+      exportOrder: 62
+    },
+    {
+      fieldId: "benefitsPaid",
+      name: "benefitsPaid",
+      headerLabel: "benefitsPaid",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Benefits paid", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 70
+    },
+    {
+      fieldId: "administrativeExpenses",
+      name: "administrativeExpenses",
+      headerLabel: "administrativeExpenses",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Administrative expenses", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 71
+    },
+    {
+      fieldId: "employerContributions",
+      name: "employerContributions",
+      headerLabel: "employerContributions",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Employer contributions", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 72
+    },
+    {
+      fieldId: "investmentIncome",
+      name: "investmentIncome",
+      headerLabel: "investmentIncome",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Investment income", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 73
+    },
+    {
+      fieldId: "netChangeInAssets",
+      name: "netChangeInAssets",
+      headerLabel: "netChangeInAssets",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Net increase (decrease)", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 74
+    },
+    {
+      fieldId: "actuarialPresentValueOfAccumulatedPlanBenefits",
+      name: "actuarialPresentValueOfAccumulatedPlanBenefits",
+      headerLabel: "actuarialPresentValueOfAccumulatedPlanBenefits",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "SB", part: "Actuarial Attachment", line: "Accumulated plan benefits", instructionsYear: 2024 },
+      supportedSchedules: ["SB", "MB"],
+      exportGroup: "allYears",
+      exportOrder: 75
+    },
+    {
+      fieldId: "contributingEmployerCount",
+      name: "contributingEmployerCount",
+      headerLabel: "contributingEmployerCount",
+      dataType: "integer",
+      locationRef: { form: "Form 5500", schedule: "R", part: "Part V", line: "Line 13", instructionsYear: 2024 },
+      supportedSchedules: ["R"],
+      exportGroup: "allYears",
+      exportOrder: 76
+    },
+    {
+      fieldId: "inactiveParticipantCount",
+      name: "inactiveParticipantCount",
+      headerLabel: "inactiveParticipantCount",
+      dataType: "integer",
+      locationRef: { form: "Form 5500", schedule: "R", part: "Part V", line: "Line 14a", instructionsYear: 2024 },
+      supportedSchedules: ["R"],
+      exportGroup: "allYears",
+      exportOrder: 77
     }
   ];
 
@@ -881,7 +1022,10 @@ window.__FORM5500_VENDOR__ = {
       maskedCount: 0,
       missingCount: 0,
       failedCount: 0,
-      notApplicableCount: 0
+      notApplicableCount: 0,
+      conflictCount: 0,
+      attachmentDerivedCount: 0,
+      unsupportedPatternCount: 0
     };
 
     exceptionList.forEach((entry) => {
@@ -890,6 +1034,12 @@ window.__FORM5500_VENDOR__ = {
       }
       if (entry.code === "masked-numeric-evidence") {
         counts.maskedCount += 1;
+      } else if (entry.code === "conflict") {
+        counts.conflictCount += 1;
+      } else if (entry.code === "attachment-only") {
+        counts.attachmentDerivedCount += 1;
+      } else if (entry.code === "unsupported-pattern") {
+        counts.unsupportedPatternCount += 1;
       } else if (entry.code === "schedule-not-present") {
         counts.notApplicableCount += 1;
       } else if (entry.code === "parse-failed") {
@@ -902,12 +1052,37 @@ window.__FORM5500_VENDOR__ = {
     return counts;
   }
 
+  function summarizeCoverageByCategory(fieldMap, schemaRegistry) {
+    const summary = {
+      plan: { expected: 0, parsed: 0 },
+      schedule: { expected: 0, parsed: 0 },
+      attachment: { expected: 0, parsed: 0 }
+    };
+
+    (Array.isArray(schemaRegistry) ? schemaRegistry : []).forEach((definition) => {
+      const field = fieldMap && fieldMap[definition.fieldId];
+      let bucket = "plan";
+      if (definition && definition.locationRef && definition.locationRef.form === "Attachment") {
+        bucket = "attachment";
+      } else if (definition && definition.locationRef && definition.locationRef.schedule) {
+        bucket = "schedule";
+      }
+      summary[bucket].expected += 1;
+      if (field && field.parseStatus === "parsed") {
+        summary[bucket].parsed += 1;
+      }
+    });
+
+    return summary;
+  }
+
   return {
     createEvidence,
     createException,
     summarizeFieldMap,
     summarizeNumericValidation,
-    summarizeReviewState
+    summarizeReviewState,
+    summarizeCoverageByCategory
   };
 });
 
@@ -919,6 +1094,8 @@ window.__FORM5500_VENDOR__ = {
   }
   global.Form5500ScheduleRouter = api;
 })(typeof globalThis !== "undefined" ? globalThis : this, function () {
+  const scheduleCodes = ["A", "C", "D", "G", "H", "I", "MB", "R", "SB"];
+
   function detectFilingYear(documentText, fileName) {
     const text = `${documentText || ""}\n${fileName || ""}`;
     const planYearMatch = text.match(/(?:beginning|begin)\s+(\d{1,2}[/-]\d{1,2}[/-](\d{4})).*?(?:ending|end)\s+(\d{1,2}[/-]\d{1,2}[/-](\d{4}))/is);
@@ -936,18 +1113,60 @@ window.__FORM5500_VENDOR__ = {
 
   function detectSchedules(documentText) {
     const text = String(documentText || "").toUpperCase();
-    const scheduleCodes = ["A", "C", "D", "G", "H", "I", "MB", "R", "SB"];
     return scheduleCodes.filter((code) => new RegExp(`SCHEDULE\\s+${code}\\b`, "i").test(text));
   }
 
-  function detectContext(documentText, fileName) {
+  function classifyPageType(pageText) {
+    const text = String(pageText || "").trim();
+    if (!text) {
+      return "unknown";
+    }
+    if (/independent\s+auditor'?s\s+report|auditor'?s\s+report/i.test(text)) {
+      return "auditor-report";
+    }
+    if (/statements?\s+of\s+net\s+assets\s+available|statement\s+of\s+changes?\s+in\s+net\s+assets|statement\s+of\s+accumulated\s+plan\s+benefits/i.test(text)) {
+      return "financial-statement";
+    }
+    if (scheduleCodes.some((code) => new RegExp(`SCHEDULE\\s+${code}\\b`, "i").test(text))) {
+      return "schedule";
+    }
+    if (/actuarial|funding\s+target\s+attainment/i.test(text)) {
+      return "actuarial-attachment";
+    }
+    return "main-form";
+  }
+
+  function detectSchedulePages(pages) {
+    const schedulePages = {};
+    (Array.isArray(pages) ? pages : []).forEach((page, index) => {
+      const text = page && page.text ? page.text : "";
+      scheduleCodes.forEach((code) => {
+        if (new RegExp(`SCHEDULE\\s+${code}\\b`, "i").test(text)) {
+          if (!schedulePages[code]) {
+            schedulePages[code] = [];
+          }
+          schedulePages[code].push(page && page.pageNumber ? page.pageNumber : index + 1);
+        }
+      });
+    });
+    return schedulePages;
+  }
+
+  function detectContext(documentText, fileName, pages) {
+    const normalizedPages = Array.isArray(pages) ? pages : [];
     return {
       filingYear: detectFilingYear(documentText, fileName),
-      schedules: detectSchedules(documentText)
+      schedules: detectSchedules(documentText),
+      schedulePages: detectSchedulePages(normalizedPages),
+      pageTypes: normalizedPages.map((page, index) => ({
+        pageNumber: page && page.pageNumber ? page.pageNumber : index + 1,
+        pageType: classifyPageType(page && page.text ? page.text : "")
+      }))
     };
   }
 
   return {
+    classifyPageType,
     detectContext
   };
 });
@@ -1141,6 +1360,25 @@ window.__FORM5500_VENDOR__ = {
     return null;
   }
 
+  function findLinePairValue(lines, aliases, pairIndex, sourceLabel) {
+    const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?(?![A-Za-z])/g;
+    for (const line of lines) {
+      if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      const matches = line.match(numberPattern);
+      if (matches && matches[pairIndex]) {
+        return {
+          value: sanitizeExtractedText(matches[pairIndex]),
+          sourceLabel: sourceLabel || aliases[0],
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(line).slice(0, 500)
+        };
+      }
+    }
+    return null;
+  }
+
   function findFinancialStatementPair(joinedText, rowLabelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
     const regex = new RegExp(
@@ -1160,6 +1398,49 @@ window.__FORM5500_VENDOR__ = {
     return {
       value: sanitizeExtractedText(match[pairIndex + 1]),
       sourceLabel: "financial-statements",
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+    };
+  }
+
+  function findFinancialStatementRowPair(joinedText, rowLabelPattern, pairIndex, options) {
+    const settings = options || {};
+    const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
+    const prefixPattern =
+      settings.prefixPattern ||
+      "statements? of (?:net assets available for (?:plan )?benefits|changes? in net assets available for (?:plan )?benefits)";
+    const regex = new RegExp(
+      prefixPattern +
+        "[^]{0,1800}?" +
+        rowLabelPattern +
+        "\\s+(" +
+        numberPattern +
+        ")\\s*\\$?\\s+(" +
+        numberPattern +
+        ")",
+      "i"
+    );
+    const match = joinedText.match(regex);
+    if (!match || !match[pairIndex + 1]) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[pairIndex + 1]),
+      sourceLabel: settings.sourceLabel || "financial-statements",
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+    };
+  }
+
+  function findActuarialAttachmentValue(joinedText, labelPattern) {
+    const regex = new RegExp(labelPattern + "[^\\d-]*(\\(?-?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?)", "i");
+    const match = joinedText.match(regex);
+    if (!match || !match[1]) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[1]),
+      sourceLabel: "actuarial-attachment",
       sourcePage: null,
       excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
     };
@@ -1322,6 +1603,7 @@ window.__FORM5500_VENDOR__ = {
       planYearEndDate: { value: footer.endDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       planName: { value: sanitizeExtractedText(match[1]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       planNumber: { value: match[2], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      planEffectiveDate: { value: match[3], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       sponsorEmployerIdentificationNumber: {
         value: match[4],
         sourceLabel: "summary-footer",
@@ -1329,6 +1611,12 @@ window.__FORM5500_VENDOR__ = {
         excerpt: footer.excerpt
       },
       sponsorName: { value: sanitizeExtractedText(match[5]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      sponsorTelephoneNumber: {
+        value: sanitizeExtractedText(match[6]),
+        sourceLabel: "summary-footer",
+        sourcePage: 1,
+        excerpt: footer.excerpt
+      },
       sponsorAddress: {
         value: sanitizeExtractedText(match[7]),
         sourceLabel: "summary-footer",
@@ -1435,6 +1723,9 @@ window.__FORM5500_VENDOR__ = {
         ? { value: planYearDates.end, sourceLabel: "detected-plan-year", sourcePage: null, excerpt: planYearDates.end }
         : null);
     rawMatches.planName = summaryMatches.planName || findTextValue(prepared.lines, ["name of plan"]);
+    rawMatches.planEffectiveDate =
+      summaryMatches.planEffectiveDate ||
+      findSingleValue(prepared.joinedText, ["effective date of plan", "date effective"], "\\d{1,2}[/-]\\d{1,2}[/-]\\d{4}");
     rawMatches.planNumber =
       summaryMatches.planNumber ||
       findSingleValue(prepared.joinedText, ["three-digit plan number \\(pn\\)", "plan number \\(pn\\)", "plan number"], "\\d{3}");
@@ -1444,10 +1735,26 @@ window.__FORM5500_VENDOR__ = {
     rawMatches.sponsorName =
       summaryMatches.sponsorName ||
       findTextValue(prepared.lines, ["plan sponsor's name", "plan sponsor’s name", "name of plan sponsor"]);
+    rawMatches.sponsorTelephoneNumber =
+      summaryMatches.sponsorTelephoneNumber ||
+      findSingleValue(
+        prepared.joinedText,
+        ["telephone number of plan sponsor", "plan sponsor telephone number", "telephone number"],
+        "\\(?\\d{3}\\)?[- ]?\\d{3}[- ]?\\d{4}"
+      );
     rawMatches.sponsorAddress = summaryMatches.sponsorAddress || findTextValue(prepared.lines, ["mailing address"]);
     rawMatches.businessCode =
       summaryMatches.businessCode ||
       findSingleValue(prepared.joinedText, ["business code \\(see instructions\\)", "business code"], "\\d{6}");
+    rawMatches.planAdministratorSameAsSponsor =
+      /same as plan sponsor/i.test(prepared.joinedText)
+        ? {
+            value: "yes",
+            sourceLabel: "plan-administrator-same-as-sponsor",
+            sourcePage: null,
+            excerpt: "same as plan sponsor"
+          }
+        : findSingleValue(prepared.joinedText, ["plan administrator same as sponsor"], "yes|no");
     rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
       { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
       { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
@@ -1512,6 +1819,79 @@ window.__FORM5500_VENDOR__ = {
     rawMatches.fundingTargetAttainmentPercent =
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
       findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
+    rawMatches.benefitsPaid =
+      findLinePairValue(prepared.lines, ["Benefits? paid(?: to participants)?"], 0, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Benefits? paid(?: to participants)?", 0) ||
+      findLinePairValue(prepared.lines, ["Benefits? paid(?: to participants)?"], 1, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Benefits? paid(?: to participants)?", 1);
+    rawMatches.administrativeExpenses =
+      findLinePairValue(prepared.lines, ["Administrative expenses"], 0, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Administrative expenses", 0) ||
+      findLinePairValue(prepared.lines, ["Administrative expenses"], 1, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Administrative expenses", 1);
+    rawMatches.employerContributions =
+      findLinePairValue(prepared.lines, ["Employer contributions"], 0, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Employer contributions", 0) ||
+      findLinePairValue(prepared.lines, ["Employer contributions"], 1, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Employer contributions", 1);
+    rawMatches.investmentIncome =
+      findLinePairValue(
+        prepared.lines,
+        ["Net appreciation \\(depreciation\\) in fair value of investments", "Interest and dividend income", "Investment income"],
+        0,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net appreciation \\(depreciation\\) in fair value of investments|Interest and dividend income|Investment income",
+        0,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      ) ||
+      findLinePairValue(
+        prepared.lines,
+        ["Net appreciation \\(depreciation\\) in fair value of investments", "Interest and dividend income", "Investment income"],
+        1,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net appreciation \\(depreciation\\) in fair value of investments|Interest and dividend income|Investment income",
+        1,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      );
+    rawMatches.netChangeInAssets =
+      findLinePairValue(
+        prepared.lines,
+        ["Net increase \\(decrease\\) before transfers to and from other plans", "Net increase \\(decrease\\)", "Net change in net assets"],
+        0,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net increase \\(decrease\\) before transfers to and from other plans|Net increase \\(decrease\\)|Net change in net assets",
+        0,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      ) ||
+      findLinePairValue(
+        prepared.lines,
+        ["Net increase \\(decrease\\) before transfers to and from other plans", "Net increase \\(decrease\\)", "Net change in net assets"],
+        1,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net increase \\(decrease\\) before transfers to and from other plans|Net increase \\(decrease\\)|Net change in net assets",
+        1,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      );
+    rawMatches.actuarialPresentValueOfAccumulatedPlanBenefits =
+      findActuarialAttachmentValue(prepared.joinedText, "Actuarial present value of accumulated plan benefits");
+    rawMatches.contributingEmployerCount =
+      findTrailingLineCodeValue(prepared.joinedText, "Contributing employers", "13", "\\d[\\d,]*") ||
+      findSingleValue(prepared.joinedText, ["contributing employers"], "\\d[\\d,]*");
+    rawMatches.inactiveParticipantCount =
+      findTrailingLineCodeValue(prepared.joinedText, "Inactive participants receiving benefits", "14a", "\\d[\\d,]*") ||
+      findSingleValue(prepared.joinedText, ["inactive participants receiving benefits"], "\\d[\\d,]*");
 
     if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
       rawMatches.netAssetsBeginningOfYear = findFinancialStatementPair(
@@ -2115,8 +2495,8 @@ window.__FORM5500_VENDOR__ = {
   function buildExtractedFromPdfData(pdfData, options) {
     const source = options || {};
     const initialContext = scheduleRouterApi && typeof scheduleRouterApi.detectContext === "function"
-      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "")
-      : { filingYear: 2024, schedules: [] };
+      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "", pdfData.pages || [])
+      : { filingYear: 2024, schedules: [], schedulePages: {}, pageTypes: [] };
     const schemaRegistry = source.schemaRegistry ||
       (historicalRegistryApi && typeof historicalRegistryApi.getHistoricalSchemaRegistry === "function"
         ? historicalRegistryApi.getHistoricalSchemaRegistry(initialContext.filingYear)
@@ -2190,6 +2570,15 @@ window.__FORM5500_VENDOR__ = {
         ...reviewState
       };
       extracted.extraction.reviewState = reviewState;
+    }
+
+    if (qualityApi && typeof qualityApi.summarizeCoverageByCategory === "function") {
+      const coverageByCategory = qualityApi.summarizeCoverageByCategory(extracted.fields, schemaRegistry);
+      extracted.metrics = {
+        ...extracted.metrics,
+        coverageByCategory
+      };
+      extracted.extraction.coverageByCategory = coverageByCategory;
     }
 
     return extracted;

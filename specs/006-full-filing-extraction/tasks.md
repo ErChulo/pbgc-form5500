@@ -19,9 +19,9 @@
 
 **Purpose**: Create the full-extraction scaffolding and validation fixtures needed for all later work
 
-- [ ] T001 Create the full-extraction fixture manifest and expected-value reference files under `tests/fixtures/feature-006/`
-- [ ] T002 [P] Add full-filing extraction validation helpers in `tests/extraction.test.js`
-- [ ] T003 [P] Document representative corpus usage and review workflow in `specs/006-full-filing-extraction/quickstart.md`
+- [x] T001 Create the full-extraction fixture manifest and expected-value reference files under `tests/fixtures/feature-006/`
+- [x] T002 [P] Add full-filing extraction validation helpers in `tests/extraction.test.js`
+- [x] T003 [P] Document representative corpus usage and review workflow in `specs/006-full-filing-extraction/quickstart.md`
 
 ---
 
@@ -31,12 +31,12 @@
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T004 Expand the canonical field registry for full filing-package extraction in `src/lib/schema/historical-registry.js`
-- [ ] T005 [P] Add additional canonical code lists and schedule metadata in `src/lib/schema/code-lists.js`
-- [ ] T006 Refactor schedule detection and page classification for full package coverage in `src/lib/extraction/schedule-router.js`
-- [ ] T007 Refactor record assembly to support expanded canonical fields, evidence, and exceptions in `src/lib/core.js`
-- [ ] T008 [P] Extend filing-level quality and review-state metrics for full extraction in `src/lib/extraction/quality.js`
-- [ ] T009 Add foundational regression coverage for expanded field containers and deterministic assembly in `tests/core.test.js`
+- [x] T004 Expand the canonical field registry for full filing-package extraction in `src/lib/schema/historical-registry.js`
+- [x] T005 [P] Add additional canonical code lists and schedule metadata in `src/lib/schema/code-lists.js`
+- [x] T006 Refactor schedule detection and page classification for full package coverage in `src/lib/extraction/schedule-router.js`
+- [x] T007 Refactor record assembly to support expanded canonical fields, evidence, and exceptions in `src/lib/core.js`
+- [x] T008 [P] Extend filing-level quality and review-state metrics for full extraction in `src/lib/extraction/quality.js`
+- [x] T009 Add foundational regression coverage for expanded field containers and deterministic assembly in `tests/core.test.js`
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 

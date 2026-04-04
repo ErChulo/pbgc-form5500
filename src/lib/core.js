@@ -398,8 +398,8 @@
   function buildExtractedFromPdfData(pdfData, options) {
     const source = options || {};
     const initialContext = scheduleRouterApi && typeof scheduleRouterApi.detectContext === "function"
-      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "")
-      : { filingYear: 2024, schedules: [] };
+      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "", pdfData.pages || [])
+      : { filingYear: 2024, schedules: [], schedulePages: {}, pageTypes: [] };
     const schemaRegistry = source.schemaRegistry ||
       (historicalRegistryApi && typeof historicalRegistryApi.getHistoricalSchemaRegistry === "function"
         ? historicalRegistryApi.getHistoricalSchemaRegistry(initialContext.filingYear)
@@ -473,6 +473,15 @@
         ...reviewState
       };
       extracted.extraction.reviewState = reviewState;
+    }
+
+    if (qualityApi && typeof qualityApi.summarizeCoverageByCategory === "function") {
+      const coverageByCategory = qualityApi.summarizeCoverageByCategory(extracted.fields, schemaRegistry);
+      extracted.metrics = {
+        ...extracted.metrics,
+        coverageByCategory
+      };
+      extracted.extraction.coverageByCategory = coverageByCategory;
     }
 
     return extracted;

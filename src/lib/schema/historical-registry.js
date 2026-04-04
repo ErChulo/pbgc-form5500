@@ -210,6 +210,143 @@
       locationRef: { form: "Form 5500", schedule: "SB", part: "Part I", line: "Line 27", instructionsYear: 2024 },
       exportGroup: "allYears",
       exportOrder: 47
+    },
+    {
+      fieldId: "planEffectiveDate",
+      name: "planEffectiveDate",
+      headerLabel: "planEffectiveDate",
+      dataType: "date",
+      locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 1c", instructionsYear: 2024 },
+      exportGroup: "allYears",
+      exportOrder: 48
+    },
+    {
+      fieldId: "sponsorTelephoneNumber",
+      name: "sponsorTelephoneNumber",
+      headerLabel: "sponsorTelephoneNumber",
+      dataType: "text",
+      locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 2c", instructionsYear: 2024 },
+      exportGroup: "allYears",
+      exportOrder: 49
+    },
+    {
+      fieldId: "planAdministratorSameAsSponsor",
+      name: "planAdministratorSameAsSponsor",
+      headerLabel: "planAdministratorSameAsSponsor",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: null, part: "Part II", line: "Line 3a", instructionsYear: 2024 },
+      exportGroup: "allYears",
+      exportOrder: 50
+    },
+    {
+      fieldId: "insuranceInForce",
+      name: "insuranceInForce",
+      headerLabel: "insuranceInForce",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: "A", part: "Part I", line: "Line 1", instructionsYear: 2024 },
+      supportedSchedules: ["A"],
+      exportGroup: "allYears",
+      exportOrder: 60
+    },
+    {
+      fieldId: "serviceProviderCompensationIndirect",
+      name: "serviceProviderCompensationIndirect",
+      headerLabel: "serviceProviderCompensationIndirect",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: "C", part: "Part I", line: "Line 2", instructionsYear: 2024 },
+      supportedSchedules: ["C"],
+      exportGroup: "allYears",
+      exportOrder: 61
+    },
+    {
+      fieldId: "reportableTransactionsPresent",
+      name: "reportableTransactionsPresent",
+      headerLabel: "reportableTransactionsPresent",
+      dataType: "boolean",
+      locationRef: { form: "Form 5500", schedule: "G", part: "Part III", line: "Line 1", instructionsYear: 2024 },
+      supportedSchedules: ["G", "H"],
+      exportGroup: "allYears",
+      exportOrder: 62
+    },
+    {
+      fieldId: "benefitsPaid",
+      name: "benefitsPaid",
+      headerLabel: "benefitsPaid",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Benefits paid", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 70
+    },
+    {
+      fieldId: "administrativeExpenses",
+      name: "administrativeExpenses",
+      headerLabel: "administrativeExpenses",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Administrative expenses", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 71
+    },
+    {
+      fieldId: "employerContributions",
+      name: "employerContributions",
+      headerLabel: "employerContributions",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Employer contributions", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 72
+    },
+    {
+      fieldId: "investmentIncome",
+      name: "investmentIncome",
+      headerLabel: "investmentIncome",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Investment income", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 73
+    },
+    {
+      fieldId: "netChangeInAssets",
+      name: "netChangeInAssets",
+      headerLabel: "netChangeInAssets",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "H", part: "Financial Statements", line: "Net increase (decrease)", instructionsYear: 2024 },
+      supportedSchedules: ["H", "I"],
+      exportGroup: "allYears",
+      exportOrder: 74
+    },
+    {
+      fieldId: "actuarialPresentValueOfAccumulatedPlanBenefits",
+      name: "actuarialPresentValueOfAccumulatedPlanBenefits",
+      headerLabel: "actuarialPresentValueOfAccumulatedPlanBenefits",
+      dataType: "currency",
+      locationRef: { form: "Attachment", schedule: "SB", part: "Actuarial Attachment", line: "Accumulated plan benefits", instructionsYear: 2024 },
+      supportedSchedules: ["SB", "MB"],
+      exportGroup: "allYears",
+      exportOrder: 75
+    },
+    {
+      fieldId: "contributingEmployerCount",
+      name: "contributingEmployerCount",
+      headerLabel: "contributingEmployerCount",
+      dataType: "integer",
+      locationRef: { form: "Form 5500", schedule: "R", part: "Part V", line: "Line 13", instructionsYear: 2024 },
+      supportedSchedules: ["R"],
+      exportGroup: "allYears",
+      exportOrder: 76
+    },
+    {
+      fieldId: "inactiveParticipantCount",
+      name: "inactiveParticipantCount",
+      headerLabel: "inactiveParticipantCount",
+      dataType: "integer",
+      locationRef: { form: "Form 5500", schedule: "R", part: "Part V", line: "Line 14a", instructionsYear: 2024 },
+      supportedSchedules: ["R"],
+      exportGroup: "allYears",
+      exportOrder: 77
     }
   ];
 

@@ -1,0 +1,50 @@
+{
+  "featureId": "006-full-filing-extraction",
+  "description": "Representative validation corpus manifest for full filing package extraction scaffolding.",
+  "fixtures": [
+    {
+      "fixtureId": "college-st-rose-2021-pension",
+      "sourceFile": "../feature-003/FORM 5500 - 2021 - 001.pdf",
+      "classification": {
+        "textSource": "native",
+        "filingType": "Form 5500",
+        "planType": "defined-benefit-pension",
+        "expectedSchedules": ["H", "R", "SB"],
+        "attachmentFamilies": ["audited-financial-statements", "auditor-report"]
+      }
+    },
+    {
+      "fixtureId": "college-st-rose-2021-403b",
+      "sourceFile": "../feature-003/FORM 5500 - 2021 - 002.pdf",
+      "classification": {
+        "textSource": "native",
+        "filingType": "Form 5500",
+        "planType": "defined-contribution",
+        "expectedSchedules": ["H", "R"],
+        "attachmentFamilies": ["audited-financial-statements", "auditor-report"]
+      }
+    },
+    {
+      "fixtureId": "college-st-rose-2024-pension",
+      "sourceFile": "../feature-003/FORM 5500 - 2024.pdf",
+      "classification": {
+        "textSource": "native",
+        "filingType": "Form 5500",
+        "planType": "defined-benefit-pension",
+        "expectedSchedules": ["H", "R", "SB"],
+        "attachmentFamilies": ["audited-financial-statements", "auditor-report"]
+      }
+    },
+    {
+      "fixtureId": "college-st-rose-2015-scanned",
+      "sourceFile": "../feature-003/FORM 5500 - 2015.pdf",
+      "classification": {
+        "textSource": "image-only",
+        "filingType": "Form 5500",
+        "planType": "unknown",
+        "expectedSchedules": [],
+        "attachmentFamilies": []
+      }
+    }
+  ]
+}

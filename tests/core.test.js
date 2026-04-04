@@ -1,6 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const core = require("../src/lib/core.js");
+const scheduleRouter = require("../src/lib/extraction/schedule-router.js");
 
 test("CSV quoting escapes commas, quotes, and newlines", () => {
   const csv = core.toCsv(
@@ -152,5 +153,61 @@ test("validation corpus summary is deterministic across mixed filing sufficiency
     failedNumericFieldCount: 1,
     unresolvedNumericFieldCount: 5,
     notApplicableNumericFieldCount: 0
+  });
+});
+
+test("schedule router context includes page classifications and schedule pages", () => {
+  const context = scheduleRouter.detectContext(
+    "Annual Return/Report of Employee Benefit Plan\nSchedule H\nSchedule SB",
+    "plan-2024.pdf",
+    [
+      { pageNumber: 1, text: "Annual Return/Report of Employee Benefit Plan" },
+      { pageNumber: 2, text: "Schedule H (Form 5500)" },
+      { pageNumber: 3, text: "INDEPENDENT AUDITOR'S REPORT" },
+      { pageNumber: 4, text: "STATEMENTS OF NET ASSETS AVAILABLE FOR PLAN BENEFITS" }
+    ]
+  );
+
+  assert.deepEqual(context.schedules, ["H", "SB"]);
+  assert.deepEqual(context.schedulePages, { H: [2] });
+  assert.deepEqual(context.pageTypes, [
+    { pageNumber: 1, pageType: "main-form" },
+    { pageNumber: 2, pageType: "schedule" },
+    { pageNumber: 3, pageType: "auditor-report" },
+    { pageNumber: 4, pageType: "financial-statement" }
+  ]);
+});
+
+test("expanded extraction metrics include category coverage and extended review counts", () => {
+  const record = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan D",
+      planNumber: "004",
+      sponsorEmployerIdentificationNumber: "444444444",
+      planYearBeginDate: "2024-01-01",
+      planYearEndDate: "2024-12-31"
+    },
+    { ingestId: "ing-4", ingestionTimestamp: "2024-02-01T00:00:00Z" }
+  );
+
+  record.metrics = {
+    ...record.metrics,
+    conflictCount: 2,
+    attachmentDerivedCount: 3,
+    unsupportedPatternCount: 1,
+    coverageByCategory: {
+      plan: { expected: 8, parsed: 5 },
+      schedule: { expected: 10, parsed: 2 },
+      attachment: { expected: 4, parsed: 1 }
+    }
+  };
+
+  assert.equal(record.metrics.conflictCount, 2);
+  assert.equal(record.metrics.attachmentDerivedCount, 3);
+  assert.equal(record.metrics.unsupportedPatternCount, 1);
+  assert.deepEqual(record.metrics.coverageByCategory, {
+    plan: { expected: 8, parsed: 5 },
+    schedule: { expected: 10, parsed: 2 },
+    attachment: { expected: 4, parsed: 1 }
   });
 });

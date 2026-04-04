@@ -10,6 +10,16 @@ Validate and iterate on materially complete extraction from text-searchable full
 - Coverage across the main form, schedules, and attachments
 - At least one multi-year plan corpus with duplicate or amended filings
 
+## Current Representative Corpus Scaffold
+
+- Fixture manifest: [`tests/fixtures/feature-006/manifest.json`](/workspaces/pbgc-form5500/tests/fixtures/feature-006/manifest.json)
+- Expected values: [`tests/fixtures/feature-006/expected-values.json`](/workspaces/pbgc-form5500/tests/fixtures/feature-006/expected-values.json)
+- Current seeded filings:
+  - `college-st-rose-2021-pension`
+  - `college-st-rose-2021-403b`
+  - `college-st-rose-2024-pension`
+  - `college-st-rose-2015-scanned`
+
 ## Workflow
 
 1. Switch to branch `006-full-filing-extraction`.

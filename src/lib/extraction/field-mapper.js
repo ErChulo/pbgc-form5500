@@ -186,6 +186,25 @@
     return null;
   }
 
+  function findLinePairValue(lines, aliases, pairIndex, sourceLabel) {
+    const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?(?![A-Za-z])/g;
+    for (const line of lines) {
+      if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      const matches = line.match(numberPattern);
+      if (matches && matches[pairIndex]) {
+        return {
+          value: sanitizeExtractedText(matches[pairIndex]),
+          sourceLabel: sourceLabel || aliases[0],
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(line).slice(0, 500)
+        };
+      }
+    }
+    return null;
+  }
+
   function findFinancialStatementPair(joinedText, rowLabelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
     const regex = new RegExp(
@@ -205,6 +224,49 @@
     return {
       value: sanitizeExtractedText(match[pairIndex + 1]),
       sourceLabel: "financial-statements",
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+    };
+  }
+
+  function findFinancialStatementRowPair(joinedText, rowLabelPattern, pairIndex, options) {
+    const settings = options || {};
+    const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
+    const prefixPattern =
+      settings.prefixPattern ||
+      "statements? of (?:net assets available for (?:plan )?benefits|changes? in net assets available for (?:plan )?benefits)";
+    const regex = new RegExp(
+      prefixPattern +
+        "[^]{0,1800}?" +
+        rowLabelPattern +
+        "\\s+(" +
+        numberPattern +
+        ")\\s*\\$?\\s+(" +
+        numberPattern +
+        ")",
+      "i"
+    );
+    const match = joinedText.match(regex);
+    if (!match || !match[pairIndex + 1]) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[pairIndex + 1]),
+      sourceLabel: settings.sourceLabel || "financial-statements",
+      sourcePage: null,
+      excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
+    };
+  }
+
+  function findActuarialAttachmentValue(joinedText, labelPattern) {
+    const regex = new RegExp(labelPattern + "[^\\d-]*(\\(?-?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?)", "i");
+    const match = joinedText.match(regex);
+    if (!match || !match[1]) {
+      return null;
+    }
+    return {
+      value: sanitizeExtractedText(match[1]),
+      sourceLabel: "actuarial-attachment",
       sourcePage: null,
       excerpt: sanitizeExtractedText(match[0]).slice(0, 500)
     };
@@ -367,6 +429,7 @@
       planYearEndDate: { value: footer.endDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       planName: { value: sanitizeExtractedText(match[1]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       planNumber: { value: match[2], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      planEffectiveDate: { value: match[3], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       sponsorEmployerIdentificationNumber: {
         value: match[4],
         sourceLabel: "summary-footer",
@@ -374,6 +437,12 @@
         excerpt: footer.excerpt
       },
       sponsorName: { value: sanitizeExtractedText(match[5]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
+      sponsorTelephoneNumber: {
+        value: sanitizeExtractedText(match[6]),
+        sourceLabel: "summary-footer",
+        sourcePage: 1,
+        excerpt: footer.excerpt
+      },
       sponsorAddress: {
         value: sanitizeExtractedText(match[7]),
         sourceLabel: "summary-footer",
@@ -480,6 +549,9 @@
         ? { value: planYearDates.end, sourceLabel: "detected-plan-year", sourcePage: null, excerpt: planYearDates.end }
         : null);
     rawMatches.planName = summaryMatches.planName || findTextValue(prepared.lines, ["name of plan"]);
+    rawMatches.planEffectiveDate =
+      summaryMatches.planEffectiveDate ||
+      findSingleValue(prepared.joinedText, ["effective date of plan", "date effective"], "\\d{1,2}[/-]\\d{1,2}[/-]\\d{4}");
     rawMatches.planNumber =
       summaryMatches.planNumber ||
       findSingleValue(prepared.joinedText, ["three-digit plan number \\(pn\\)", "plan number \\(pn\\)", "plan number"], "\\d{3}");
@@ -489,10 +561,26 @@
     rawMatches.sponsorName =
       summaryMatches.sponsorName ||
       findTextValue(prepared.lines, ["plan sponsor's name", "plan sponsor’s name", "name of plan sponsor"]);
+    rawMatches.sponsorTelephoneNumber =
+      summaryMatches.sponsorTelephoneNumber ||
+      findSingleValue(
+        prepared.joinedText,
+        ["telephone number of plan sponsor", "plan sponsor telephone number", "telephone number"],
+        "\\(?\\d{3}\\)?[- ]?\\d{3}[- ]?\\d{4}"
+      );
     rawMatches.sponsorAddress = summaryMatches.sponsorAddress || findTextValue(prepared.lines, ["mailing address"]);
     rawMatches.businessCode =
       summaryMatches.businessCode ||
       findSingleValue(prepared.joinedText, ["business code \\(see instructions\\)", "business code"], "\\d{6}");
+    rawMatches.planAdministratorSameAsSponsor =
+      /same as plan sponsor/i.test(prepared.joinedText)
+        ? {
+            value: "yes",
+            sourceLabel: "plan-administrator-same-as-sponsor",
+            sourcePage: null,
+            excerpt: "same as plan sponsor"
+          }
+        : findSingleValue(prepared.joinedText, ["plan administrator same as sponsor"], "yes|no");
     rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
       { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
       { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
@@ -557,6 +645,79 @@
     rawMatches.fundingTargetAttainmentPercent =
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
       findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
+    rawMatches.benefitsPaid =
+      findLinePairValue(prepared.lines, ["Benefits? paid(?: to participants)?"], 0, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Benefits? paid(?: to participants)?", 0) ||
+      findLinePairValue(prepared.lines, ["Benefits? paid(?: to participants)?"], 1, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Benefits? paid(?: to participants)?", 1);
+    rawMatches.administrativeExpenses =
+      findLinePairValue(prepared.lines, ["Administrative expenses"], 0, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Administrative expenses", 0) ||
+      findLinePairValue(prepared.lines, ["Administrative expenses"], 1, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Administrative expenses", 1);
+    rawMatches.employerContributions =
+      findLinePairValue(prepared.lines, ["Employer contributions"], 0, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Employer contributions", 0) ||
+      findLinePairValue(prepared.lines, ["Employer contributions"], 1, "financial-statements") ||
+      findFinancialStatementRowPair(prepared.joinedText, "Employer contributions", 1);
+    rawMatches.investmentIncome =
+      findLinePairValue(
+        prepared.lines,
+        ["Net appreciation \\(depreciation\\) in fair value of investments", "Interest and dividend income", "Investment income"],
+        0,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net appreciation \\(depreciation\\) in fair value of investments|Interest and dividend income|Investment income",
+        0,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      ) ||
+      findLinePairValue(
+        prepared.lines,
+        ["Net appreciation \\(depreciation\\) in fair value of investments", "Interest and dividend income", "Investment income"],
+        1,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net appreciation \\(depreciation\\) in fair value of investments|Interest and dividend income|Investment income",
+        1,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      );
+    rawMatches.netChangeInAssets =
+      findLinePairValue(
+        prepared.lines,
+        ["Net increase \\(decrease\\) before transfers to and from other plans", "Net increase \\(decrease\\)", "Net change in net assets"],
+        0,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net increase \\(decrease\\) before transfers to and from other plans|Net increase \\(decrease\\)|Net change in net assets",
+        0,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      ) ||
+      findLinePairValue(
+        prepared.lines,
+        ["Net increase \\(decrease\\) before transfers to and from other plans", "Net increase \\(decrease\\)", "Net change in net assets"],
+        1,
+        "financial-statements"
+      ) ||
+      findFinancialStatementRowPair(
+        prepared.joinedText,
+        "Net increase \\(decrease\\) before transfers to and from other plans|Net increase \\(decrease\\)|Net change in net assets",
+        1,
+        { prefixPattern: "statements? of changes? in net assets available for (?:plan )?benefits" }
+      );
+    rawMatches.actuarialPresentValueOfAccumulatedPlanBenefits =
+      findActuarialAttachmentValue(prepared.joinedText, "Actuarial present value of accumulated plan benefits");
+    rawMatches.contributingEmployerCount =
+      findTrailingLineCodeValue(prepared.joinedText, "Contributing employers", "13", "\\d[\\d,]*") ||
+      findSingleValue(prepared.joinedText, ["contributing employers"], "\\d[\\d,]*");
+    rawMatches.inactiveParticipantCount =
+      findTrailingLineCodeValue(prepared.joinedText, "Inactive participants receiving benefits", "14a", "\\d[\\d,]*") ||
+      findSingleValue(prepared.joinedText, ["inactive participants receiving benefits"], "\\d[\\d,]*");
 
     if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
       rawMatches.netAssetsBeginningOfYear = findFinancialStatementPair(
