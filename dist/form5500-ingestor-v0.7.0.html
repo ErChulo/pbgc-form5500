@@ -1056,530 +1056,7 @@ window.__FORM5500_VENDOR__ = {
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       for (const alias of aliases) {
-        const regex = new RegExp(`${alias}\\s*[:\\-]?\\s*(.+)<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Form 5500 Ingestor v0.7.0</title>
-    <style>
-:root {
-  --bg: #f2efe8;
-  --panel: #fffdf9;
-  --panel-border: #c9c1b4;
-  --ink: #172021;
-  --muted: #526165;
-  --accent: #9f2f19;
-  --accent-soft: #f6d7cf;
-  --focus: #005fcc;
-  --warn: #8a4200;
-  --warn-bg: #fff1df;
-  --ok-bg: #e3f6ea;
-  --shadow: 0 12px 36px rgba(23, 32, 33, 0.08);
-  --radius: 16px;
-  --mono: "IBM Plex Mono", "SFMono-Regular", ui-monospace, monospace;
-  --sans: "Segoe UI", "Avenir Next", "Trebuchet MS", sans-serif;
-}
-
-body {
-  margin: 0;
-  background:
-    radial-gradient(circle at top left, rgba(159, 47, 25, 0.18), transparent 28rem),
-    linear-gradient(180deg, #f8f4ec 0%, #ede6da 100%);
-  color: var(--ink);
-  font-family: var(--sans);
-}
-
-body.high-contrast {
-  --bg: #ffffff;
-  --panel: #ffffff;
-  --panel-border: #111111;
-  --ink: #000000;
-  --muted: #1c1c1c;
-  --accent: #7b0000;
-  --accent-soft: #ffd9d9;
-  --focus: #0000ee;
-  --warn: #6b2f00;
-  --warn-bg: #fff3d1;
-  --ok-bg: #dbffe3;
-  background: #ffffff;
-}
-
-* {
-  box-sizing: border-box;
-}
-
-button,
-input,
-textarea,
-summary,
-.buttonlike,
-.dropzone {
-  font: inherit;
-}
-
-button,
-.buttonlike {
-  appearance: none;
-  border: 1px solid var(--ink);
-  border-radius: 999px;
-  background: var(--accent);
-  color: #fff;
-  cursor: pointer;
-  padding: 0.72rem 1rem;
-  text-decoration: none;
-  transition: transform 120ms ease, background 120ms ease;
-}
-
-button.secondary {
-  background: transparent;
-  color: var(--ink);
-}
-
-button.small,
-.buttonlike.small {
-  padding: 0.35rem 0.7rem;
-  font-size: 0.92rem;
-}
-
-button:hover,
-.buttonlike:hover,
-summary:hover {
-  transform: translateY(-1px);
-}
-
-:focus-visible {
-  outline: 3px solid var(--focus);
-  outline-offset: 3px;
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  border: 0;
-}
-
-.app-shell {
-  width: min(1280px, calc(100% - 2rem));
-  margin: 0 auto;
-  padding: 1.2rem 0 2rem;
-}
-
-.hero,
-.panel,
-.card,
-.footer,
-.status-bar,
-.origin-chip {
-  border: 1px solid var(--panel-border);
-  background: var(--panel);
-  box-shadow: var(--shadow);
-}
-
-.hero,
-.panel,
-.card,
-.footer,
-.status-bar {
-  border-radius: var(--radius);
-}
-
-.hero {
-  display: flex;
-  justify-content: space-between;
-  gap: 1rem;
-  align-items: start;
-  padding: 1.4rem;
-  margin-bottom: 1rem;
-}
-
-.eyebrow {
-  margin: 0 0 0.45rem;
-  font-family: var(--mono);
-  font-size: 0.82rem;
-  letter-spacing: 0.16em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
-h1,
-h2 {
-  margin: 0;
-}
-
-.lede,
-.muted {
-  color: var(--muted);
-}
-
-.hero-actions,
-.actions-row,
-.stack-row,
-.summary-pills,
-.chooser-grid {
-  display: flex;
-  gap: 0.75rem;
-  flex-wrap: wrap;
-}
-
-.hero-actions {
-  justify-content: flex-end;
-}
-
-.origin-chip {
-  border-radius: 999px;
-  padding: 0.6rem 0.9rem;
-  font-size: 0.92rem;
-}
-
-.toggle {
-  display: inline-flex;
-  gap: 0.45rem;
-  align-items: center;
-}
-
-.layout {
-  display: grid;
-  gap: 1rem;
-}
-
-.tabs-panel {
-  padding: 0.55rem;
-}
-
-.tabs {
-  display: inline-flex;
-  gap: 0.5rem;
-}
-
-.tab {
-  background: transparent;
-  color: var(--ink);
-}
-
-.tab.active {
-  background: var(--accent);
-  color: #fff;
-}
-
-.panel {
-  padding: 1rem;
-}
-
-.grid.two {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 1rem;
-}
-
-.card {
-  padding: 1rem;
-  margin-bottom: 1rem;
-}
-
-.dropzone {
-  min-height: 9rem;
-  display: grid;
-  place-items: center;
-  gap: 0.4rem;
-  text-align: center;
-  border: 2px dashed var(--panel-border);
-  border-radius: calc(var(--radius) - 4px);
-  background: linear-gradient(180deg, rgba(159, 47, 25, 0.04), transparent);
-}
-
-.dropzone.dragover {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-
-textarea,
-input[type="number"] {
-  width: 100%;
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  padding: 0.8rem 0.9rem;
-  background: #fff;
-  color: inherit;
-}
-
-.compact input {
-  width: 5rem;
-}
-
-.table-wrap {
-  overflow: auto;
-  border-radius: 14px;
-  border: 1px solid var(--panel-border);
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  min-width: 820px;
-}
-
-th,
-td {
-  padding: 0.72rem;
-  border-bottom: 1px solid #e5ded2;
-  vertical-align: top;
-  text-align: left;
-}
-
-th {
-  position: sticky;
-  top: 0;
-  background: #f8f4ec;
-}
-
-.pill {
-  display: inline-flex;
-  align-items: center;
-  border-radius: 999px;
-  padding: 0.2rem 0.55rem;
-  font-size: 0.85rem;
-  background: var(--accent-soft);
-}
-
-.summary-panel {
-  margin: 0 0 1rem;
-}
-
-.note {
-  border-radius: 14px;
-  padding: 0.8rem 0.9rem;
-  margin: 0.7rem 0 0;
-}
-
-.warning {
-  background: var(--warn-bg);
-  color: var(--warn);
-  border: 1px solid color-mix(in srgb, var(--warn) 40%, white);
-}
-
-.ok {
-  background: var(--ok-bg);
-}
-
-.mono {
-  font-family: var(--mono);
-}
-
-.status-bar,
-.footer {
-  padding: 0.85rem 1rem;
-  margin-top: 1rem;
-}
-
-.footer {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-  justify-content: space-between;
-  color: var(--muted);
-}
-
-.preview-shell {
-  width: min(90vw, 1100px);
-}
-
-#preview-frame {
-  width: 100%;
-  min-height: 72vh;
-  border: 1px solid var(--panel-border);
-  border-radius: 14px;
-  margin-top: 1rem;
-}
-
-dialog {
-  border: none;
-  padding: 0;
-  border-radius: var(--radius);
-}
-
-dialog::backdrop {
-  background: rgba(0, 0, 0, 0.48);
-}
-
-.empty {
-  color: var(--muted);
-  text-align: center;
-}
-
-@media (max-width: 860px) {
-  .app-shell {
-    width: min(100% - 1rem, 100%);
-  }
-
-  .hero,
-  .grid.two {
-    grid-template-columns: 1fr;
-    display: grid;
-  }
-
-  .hero-actions {
-    justify-content: start;
-  }
-
-  .footer {
-    justify-content: start;
-  }
-}
-
-    </style>
-  </head>
-  <body>
-    <div class="app-shell" id="app">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">PBGC Form 5500</p>
-          <h1>Form 5500 Ingestor</h1>
-          <p class="lede">
-            Ingest local PDFs, remote PDF links, and EFAST search CSV exports, then
-            extract filing fields into one deterministic all-years table.
-          </p>
-        </div>
-        <div class="hero-actions">
-          <label class="toggle">
-            <input id="high-contrast-toggle" type="checkbox">
-            <span>High contrast</span>
-          </label>
-          <div class="origin-chip" id="origin-chip"></div>
-        </div>
-      </header>
-
-      <main class="layout">
-        <section class="panel tabs-panel">
-          <div class="tabs" role="tablist" aria-label="Application sections">
-            <button id="tab-ingestion" class="tab active" type="button" role="tab" aria-selected="true" aria-controls="panel-ingestion">Ingestion</button>
-            <button id="tab-all-years" class="tab" type="button" role="tab" aria-selected="false" aria-controls="panel-all-years">All years</button>
-          </div>
-        </section>
-
-        <section id="panel-ingestion" class="panel tab-panel active" role="tabpanel" aria-labelledby="tab-ingestion">
-          <div class="grid two">
-            <article class="card">
-              <h2>Mode 1: Local PDF files</h2>
-              <p class="muted">Select one or more Form 5500 PDF files from your device.</p>
-              <label class="buttonlike" for="local-pdf-input">Choose PDF files</label>
-              <input id="local-pdf-input" type="file" accept=".pdf,application/pdf" multiple class="sr-only">
-            </article>
-
-            <article class="card">
-              <h2>Mode 4: EFAST CSV upload</h2>
-              <p class="muted">Upload a CSV export from the EFAST Form 5500 search website.</p>
-              <label class="buttonlike" for="csv-input">Choose CSV file</label>
-              <input id="csv-input" type="file" accept=".csv,text/csv" class="sr-only">
-            </article>
-          </div>
-
-          <article class="card">
-            <h2>Mode 2: Drag and drop</h2>
-            <p class="muted">Drop PDFs or an EFAST CSV file anywhere inside this target.</p>
-            <div id="dropzone" class="dropzone" tabindex="0" role="button" aria-label="Drop files here or press Enter to choose local PDF files">
-              <strong>Drop PDFs or CSV here</strong>
-              <span>Press Enter to open the local PDF picker.</span>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="stack-row">
-              <div>
-                <h2>Mode 3: Remote PDF links</h2>
-                <p class="muted">Paste one URL per line, add them to the queue, then open each link in the browser and re-ingest the downloaded PDF locally.</p>
-              </div>
-            </div>
-            <textarea id="url-input" rows="6" placeholder="https://example.org/filing-2023.pdf&#10;https://example.org/filing-2024.pdf"></textarea>
-            <div id="remote-origin-warning" class="note warning" hidden></div>
-            <div class="actions-row">
-              <button id="add-links-button" type="button">Add links to queue</button>
-              <button id="download-now-button" type="button" class="secondary">Show manual download guidance</button>
-            </div>
-          </article>
-
-          <article class="card">
-            <div class="stack-row">
-              <div>
-                <h2>Unified queue</h2>
-                <p class="muted">All PDF, remote, and EFAST-derived items appear in one queue.</p>
-              </div>
-              <div id="queue-summary" class="summary-pills" aria-live="polite"></div>
-            </div>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Ingest ID</th>
-                    <th>Source type</th>
-                    <th>Name</th>
-                    <th>Size</th>
-                    <th>Status</th>
-                    <th>Progress</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody id="queue-table-body"></tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-
-        <section id="panel-all-years" class="panel tab-panel" role="tabpanel" aria-labelledby="tab-all-years" hidden>
-          <article class="card">
-            <div class="stack-row all-years-head">
-              <div>
-                <h2>All years</h2>
-                <p class="muted">One row per plan year with deterministic duplicate-year selection and schema-driven extracted fields.</p>
-              </div>
-              <div class="actions-row">
-                <button id="download-csv-button" type="button">Download CSV</button>
-                <button id="copy-csv-button" type="button" class="secondary">Copy CSV</button>
-              </div>
-            </div>
-            <div id="corpus-summary" class="summary-pills summary-panel" aria-live="polite"></div>
-            <details class="column-chooser">
-              <summary>Column chooser</summary>
-              <div id="column-chooser-list" class="chooser-grid"></div>
-            </details>
-            <div class="table-wrap">
-              <table>
-                <thead>
-                  <tr id="all-years-head-row"></tr>
-                </thead>
-                <tbody id="all-years-body"></tbody>
-              </table>
-            </div>
-          </article>
-        </section>
-      </main>
-
-      <div id="app-status" class="status-bar" aria-live="polite"></div>
-
-      <footer class="footer">
-        <span>Version v0.7.0</span>
-        <span>Single-file browser build</span>
-        <span>Local-only processing</span>
-      </footer>
-    </div>
-
-    <dialog id="preview-dialog">
-      <form method="dialog" class="preview-shell">
-        <div class="stack-row">
-          <h2 id="preview-title">Preview</h2>
-          <button value="close" type="submit">Close</button>
-        </div>
-        <iframe id="preview-frame" title="PDF preview"></iframe>
-      </form>
-    </dialog>
-
-    <script>
-, "i");
+        const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(.+)$", "i");
         const inlineMatch = line.match(regex);
         if (inlineMatch && inlineMatch[1] && !isBoilerplateLine(inlineMatch[1])) {
           return { value: sanitizeExtractedText(inlineMatch[1]), sourceLabel: alias, sourcePage: null, excerpt: line };
@@ -1621,8 +1098,8 @@ dialog::backdrop {
   function findScheduleLinePair(joinedText, lineCode, labelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?(?:\\s*%?)?\\)?";
     const patterns = [
-      new RegExp(`(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i"),
-      new RegExp(`(?:^|\\n)(?:${labelPattern})[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i")
+      new RegExp("(?:^|\\n)" + lineCode + "\\s+" + labelPattern + "[^\\n]*?" + lineCode + "\\s+(" + numberPattern + ")\\s+(" + numberPattern + ")", "i"),
+      new RegExp("(?:^|\\n)(?:" + labelPattern + ")[^\\n]*?" + lineCode + "\\s+(" + numberPattern + ")\\s+(" + numberPattern + ")", "i")
     ];
     for (const regex of patterns) {
       const match = joinedText.match(regex);
@@ -1647,7 +1124,7 @@ dialog::backdrop {
       }
       for (let lookahead = 1; lookahead <= 2; lookahead += 1) {
         const candidate = lines[index + lookahead];
-        if (!candidate || !new RegExp(`\\b${lineCode}\\b`, "i").test(candidate)) {
+        if (!candidate || !new RegExp("\\b" + lineCode + "\\b", "i").test(candidate)) {
           continue;
         }
         const matches = candidate.match(numberPattern);
@@ -1656,7 +1133,7 @@ dialog::backdrop {
             value: sanitizeExtractedText(matches[pairIndex]),
             sourceLabel: lineCode,
             sourcePage: null,
-            excerpt: `${sanitizeExtractedText(line)} ${sanitizeExtractedText(candidate)}`.slice(0, 500)
+            excerpt: (sanitizeExtractedText(line) + " " + sanitizeExtractedText(candidate)).slice(0, 500)
           };
         }
       }
@@ -1667,7 +1144,13 @@ dialog::backdrop {
   function findFinancialStatementPair(joinedText, rowLabelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
     const regex = new RegExp(
-      `statements? of net assets available for (?:plan )?benefits[^]{0,1200}?(?:assets\\b|investments?,? at fair value)[^]{0,1200}?${rowLabelPattern}\\s+(${numberPattern})\\s*\\$?\\s+(${numberPattern})`,
+      "statements? of net assets available for (?:plan )?benefits[^]{0,1200}?(?:assets\\b|investments?,? at fair value)[^]{0,1200}?" +
+        rowLabelPattern +
+        "\\s+(" +
+        numberPattern +
+        ")\\s*\\$?\\s+(" +
+        numberPattern +
+        ")",
       "i"
     );
     const match = joinedText.match(regex);
@@ -1727,7 +1210,7 @@ dialog::backdrop {
 
   function findSingleValue(joinedText, aliases, valuePattern) {
     for (const alias of aliases) {
-      const regex = new RegExp(`${alias}\\s*[:\\-]?\\s*(${valuePattern})`, "i");
+        const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(" + valuePattern + ")", "i");
       const match = joinedText.match(regex);
       if (match) {
         return { value: sanitizeExtractedText(match[1]), sourceLabel: alias, sourcePage: null, excerpt: match[0] };
@@ -1737,7 +1220,7 @@ dialog::backdrop {
   }
 
   function findLastMatch(text, regex) {
-    const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : `${regex.flags}g`);
+    const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : regex.flags + "g");
     let last = null;
     let match = globalRegex.exec(text);
     while (match) {
@@ -1803,7 +1286,7 @@ dialog::backdrop {
   }
 
   function findTrailingLineCodeNumber(joinedText, labelPattern, lineCode) {
-    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
+    const match = joinedText.match(new RegExp("(?:" + labelPattern + ")[^]*?" + lineCode + "\\s+(-?\\d[\\d,]*)", "i"));
     if (!match) {
       return null;
     }
@@ -1826,7 +1309,7 @@ dialog::backdrop {
   }
 
   function findTrailingLineCodeValue(joinedText, labelPattern, lineCode, valuePattern) {
-    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
+    const match = joinedText.match(new RegExp("(?:" + labelPattern + ")[^]*?" + lineCode + "\\s+(" + valuePattern + ")", "i"));
     if (!match) {
       return null;
     }
@@ -2004,7 +1487,7 @@ dialog::backdrop {
         exceptions.push({
           fieldId: definition.fieldId,
           code: "schedule-not-present",
-          message: `Schedule ${supportedSchedules.join(" or ")} is not present in this filing package.`,
+          message: "Schedule " + supportedSchedules.join(" or ") + " is not present in this filing package.",
           sourcePage: null,
           sourceLabel: definition.name
         });

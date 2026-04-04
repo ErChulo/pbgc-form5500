@@ -101,7 +101,7 @@
     for (let index = 0; index < lines.length; index += 1) {
       const line = lines[index];
       for (const alias of aliases) {
-        const regex = new RegExp(`${alias}\\s*[:\\-]?\\s*(.+)$`, "i");
+        const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(.+)$", "i");
         const inlineMatch = line.match(regex);
         if (inlineMatch && inlineMatch[1] && !isBoilerplateLine(inlineMatch[1])) {
           return { value: sanitizeExtractedText(inlineMatch[1]), sourceLabel: alias, sourcePage: null, excerpt: line };
@@ -143,8 +143,8 @@
   function findScheduleLinePair(joinedText, lineCode, labelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?(?:\\s*%?)?\\)?";
     const patterns = [
-      new RegExp(`(?:^|\\n)${lineCode}\\s+${labelPattern}[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i"),
-      new RegExp(`(?:^|\\n)(?:${labelPattern})[^\\n]*?${lineCode}\\s+(${numberPattern})\\s+(${numberPattern})`, "i")
+      new RegExp("(?:^|\\n)" + lineCode + "\\s+" + labelPattern + "[^\\n]*?" + lineCode + "\\s+(" + numberPattern + ")\\s+(" + numberPattern + ")", "i"),
+      new RegExp("(?:^|\\n)(?:" + labelPattern + ")[^\\n]*?" + lineCode + "\\s+(" + numberPattern + ")\\s+(" + numberPattern + ")", "i")
     ];
     for (const regex of patterns) {
       const match = joinedText.match(regex);
@@ -169,7 +169,7 @@
       }
       for (let lookahead = 1; lookahead <= 2; lookahead += 1) {
         const candidate = lines[index + lookahead];
-        if (!candidate || !new RegExp(`\\b${lineCode}\\b`, "i").test(candidate)) {
+        if (!candidate || !new RegExp("\\b" + lineCode + "\\b", "i").test(candidate)) {
           continue;
         }
         const matches = candidate.match(numberPattern);
@@ -178,7 +178,7 @@
             value: sanitizeExtractedText(matches[pairIndex]),
             sourceLabel: lineCode,
             sourcePage: null,
-            excerpt: `${sanitizeExtractedText(line)} ${sanitizeExtractedText(candidate)}`.slice(0, 500)
+            excerpt: (sanitizeExtractedText(line) + " " + sanitizeExtractedText(candidate)).slice(0, 500)
           };
         }
       }
@@ -189,7 +189,13 @@
   function findFinancialStatementPair(joinedText, rowLabelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
     const regex = new RegExp(
-      `statements? of net assets available for (?:plan )?benefits[^]{0,1200}?(?:assets\\b|investments?,? at fair value)[^]{0,1200}?${rowLabelPattern}\\s+(${numberPattern})\\s*\\$?\\s+(${numberPattern})`,
+      "statements? of net assets available for (?:plan )?benefits[^]{0,1200}?(?:assets\\b|investments?,? at fair value)[^]{0,1200}?" +
+        rowLabelPattern +
+        "\\s+(" +
+        numberPattern +
+        ")\\s*\\$?\\s+(" +
+        numberPattern +
+        ")",
       "i"
     );
     const match = joinedText.match(regex);
@@ -249,7 +255,7 @@
 
   function findSingleValue(joinedText, aliases, valuePattern) {
     for (const alias of aliases) {
-      const regex = new RegExp(`${alias}\\s*[:\\-]?\\s*(${valuePattern})`, "i");
+        const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(" + valuePattern + ")", "i");
       const match = joinedText.match(regex);
       if (match) {
         return { value: sanitizeExtractedText(match[1]), sourceLabel: alias, sourcePage: null, excerpt: match[0] };
@@ -259,7 +265,7 @@
   }
 
   function findLastMatch(text, regex) {
-    const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : `${regex.flags}g`);
+    const globalRegex = new RegExp(regex.source, regex.flags.includes("g") ? regex.flags : regex.flags + "g");
     let last = null;
     let match = globalRegex.exec(text);
     while (match) {
@@ -325,7 +331,7 @@
   }
 
   function findTrailingLineCodeNumber(joinedText, labelPattern, lineCode) {
-    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(-?\\d[\\d,]*)`, "i"));
+    const match = joinedText.match(new RegExp("(?:" + labelPattern + ")[^]*?" + lineCode + "\\s+(-?\\d[\\d,]*)", "i"));
     if (!match) {
       return null;
     }
@@ -348,7 +354,7 @@
   }
 
   function findTrailingLineCodeValue(joinedText, labelPattern, lineCode, valuePattern) {
-    const match = joinedText.match(new RegExp(`(?:${labelPattern})[^]*?${lineCode}\\s+(${valuePattern})`, "i"));
+    const match = joinedText.match(new RegExp("(?:" + labelPattern + ")[^]*?" + lineCode + "\\s+(" + valuePattern + ")", "i"));
     if (!match) {
       return null;
     }
@@ -526,7 +532,7 @@
         exceptions.push({
           fieldId: definition.fieldId,
           code: "schedule-not-present",
-          message: `Schedule ${supportedSchedules.join(" or ")} is not present in this filing package.`,
+          message: "Schedule " + supportedSchedules.join(" or ") + " is not present in this filing package.",
           sourcePage: null,
           sourceLabel: definition.name
         });
