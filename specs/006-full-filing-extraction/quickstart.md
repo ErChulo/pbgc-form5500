@@ -20,6 +20,21 @@ Validate and iterate on materially complete extraction from text-searchable full
   - `college-st-rose-2024-pension`
   - `college-st-rose-2015-scanned`
 
+## Current Validation Boundary
+
+- The seeded `feature-006` corpus currently provides known-good expected values for the three text-searchable College of Saint Rose filings.
+- Those expectations cover the currently proven slice:
+  - core plan identifiers
+  - detected schedules
+  - accountant opinion
+  - beginning/end assets and net assets
+- Browser-side ingestion of the real PDFs is still the authoritative validation path for this corpus because [`pdf-source.js`](/workspaces/pbgc-form5500/src/lib/extraction/pdf-source.js) is browser-only and the Node test suite cannot directly parse the local fixture PDFs.
+- The scanned 2015 filing remains a compatibility fixture, not a text-searchable completion fixture.
+- Release signoff for this feature should still include a browser pass on:
+  - `FORM 5500 - 2021 - 001.pdf`
+  - `FORM 5500 - 2021 - 002.pdf`
+  - `FORM 5500 - 2024.pdf`
+
 ## Workflow
 
 1. Switch to branch `006-full-filing-extraction`.

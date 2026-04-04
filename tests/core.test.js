@@ -269,3 +269,52 @@ test("validation corpus summary includes conflict and attachment-derived counts"
   assert.equal(summary.conflictCount, 2);
   assert.equal(summary.attachmentDerivedCount, 3);
 });
+
+test("duplicate-year selection preserves expanded field values from the preferred filing", () => {
+  const older = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan G",
+      planNumber: "007",
+      sponsorEmployerIdentificationNumber: "777777777",
+      planYearBeginDate: "2024-01-01",
+      planYearEndDate: "2024-12-31",
+      filingKind: "original",
+      receivedTimestamp: "2025-01-15T00:00:00Z"
+    },
+    { ingestId: "ing-7", ingestionTimestamp: "2025-01-15T00:00:00Z", schemaRegistry: core.getDefaultSchemaRegistry() }
+  );
+  older.fields.assetsEndOfYear = core.normalizeFieldValue("700000", "currency");
+  older.fields.scheduleHAccountantOpinion = core.normalizeFieldValue("disclaimer of opinion", "text");
+  older.metrics = {
+    ...older.metrics,
+    conflictCount: 1,
+    attachmentDerivedCount: 0
+  };
+
+  const newer = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan G",
+      planNumber: "007",
+      sponsorEmployerIdentificationNumber: "777777777",
+      planYearBeginDate: "2024-01-01",
+      planYearEndDate: "2024-12-31",
+      filingKind: "amended",
+      receivedTimestamp: "2025-02-01T00:00:00Z"
+    },
+    { ingestId: "ing-8", ingestionTimestamp: "2025-02-01T00:00:00Z", schemaRegistry: core.getDefaultSchemaRegistry() }
+  );
+  newer.fields.assetsEndOfYear = core.normalizeFieldValue("825000", "currency");
+  newer.fields.scheduleHAccountantOpinion = core.normalizeFieldValue("unmodified opinion", "text");
+  newer.metrics = {
+    ...newer.metrics,
+    conflictCount: 0,
+    attachmentDerivedCount: 1
+  };
+
+  const aggregate = core.aggregateAllYears([older, newer], core.getDefaultSchemaRegistry());
+  assert.equal(aggregate.rows.length, 1);
+  assert.equal(aggregate.rows[0].assetsEndOfYear, "825000");
+  assert.equal(aggregate.rows[0].scheduleHAccountantOpinion, "unmodified opinion");
+  assert.equal(aggregate.rows[0].__reviewSummary.conflictCount, 0);
+  assert.equal(aggregate.rows[0].__reviewSummary.attachmentDerivedCount, 1);
+});

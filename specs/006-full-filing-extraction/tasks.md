@@ -98,7 +98,7 @@
 ### Tests for User Story 3 ⚠️
 
 - [x] T025 [P] [US3] Add expanded all-years aggregation regressions in `tests/core.test.js`
-- [ ] T026 [P] [US3] Add duplicate-year deterministic selection regressions for expanded fields in `tests/core.test.js`
+- [x] T026 [P] [US3] Add duplicate-year deterministic selection regressions for expanded fields in `tests/core.test.js`
 
 ### Implementation for User Story 3
 
