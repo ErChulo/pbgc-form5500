@@ -210,6 +210,40 @@ test("schedule numeric rows parse when values are split onto the next line", () 
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
 });
 
+test("financial statements provide a fallback for net assets when schedule rows are masked", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 07/01/2021 and ending 06/30/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "1l Net assets (subtract line 1k from line 1f) 1l -123456789012345 -123456789012345",
+    "STATEMENTS OF NET ASSETS AVAILABLE FOR PLAN BENEFITS June 30, 2022 and 2021 2022 2021",
+    "Investments, at fair value 4,448,001 $ 6,069,063 $",
+    "Accrued income receivable 143,003 21",
+    "Net assets available for plan benefits 4,591,004 $ 6,069,084 $"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000g",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "northwind-2022-financial-statements.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "6069084");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "4591004");
+});
+
 test("redacted schedule placeholders are treated as missing instead of parsed values", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",
