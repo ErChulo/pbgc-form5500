@@ -267,6 +267,35 @@ td {
   text-align: left;
 }
 
+td.cell-state-masked,
+td.cell-state-failed,
+td.cell-state-missing,
+td.cell-state-conflicting,
+td.cell-state-not-applicable {
+  font-family: var(--mono);
+}
+
+td.cell-state-masked {
+  background: rgba(159, 47, 25, 0.08);
+}
+
+td.cell-state-conflicting {
+  background: rgba(255, 196, 0, 0.18);
+}
+
+td.cell-state-failed {
+  background: rgba(138, 66, 0, 0.12);
+}
+
+td.cell-state-not-applicable {
+  color: var(--muted);
+}
+
+td.cell-state-missing {
+  color: var(--muted);
+  font-style: italic;
+}
+
 th {
   position: sticky;
   top: 0;

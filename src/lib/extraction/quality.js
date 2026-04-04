@@ -82,14 +82,18 @@
     };
   }
 
-  function summarizeReviewState(exceptions) {
+  function summarizeReviewState(exceptions, evidence) {
     const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const evidenceList = Array.isArray(evidence) ? evidence : [];
     const counts = {
       exceptionCount: exceptionList.length,
       maskedCount: 0,
       missingCount: 0,
       failedCount: 0,
-      notApplicableCount: 0
+      notApplicableCount: 0,
+      conflictCount: 0,
+      attachmentDerivedCount: 0,
+      unsupportedPatternCount: 0
     };
 
     exceptionList.forEach((entry) => {
@@ -98,6 +102,12 @@
       }
       if (entry.code === "masked-numeric-evidence") {
         counts.maskedCount += 1;
+      } else if (entry.code === "conflict") {
+        counts.conflictCount += 1;
+      } else if (entry.code === "attachment-only") {
+        counts.attachmentDerivedCount += 1;
+      } else if (entry.code === "unsupported-pattern") {
+        counts.unsupportedPatternCount += 1;
       } else if (entry.code === "schedule-not-present") {
         counts.notApplicableCount += 1;
       } else if (entry.code === "parse-failed") {
@@ -107,7 +117,39 @@
       }
     });
 
+    if (!counts.attachmentDerivedCount) {
+      counts.attachmentDerivedCount = evidenceList.filter((entry) =>
+        entry &&
+        entry.status === "parsed" &&
+        ["financial-statement", "actuarial-attachment", "other-attachment"].includes(entry.sourceType)
+      ).length;
+    }
+
     return counts;
+  }
+
+  function summarizeCoverageByCategory(fieldMap, schemaRegistry) {
+    const summary = {
+      plan: { expected: 0, parsed: 0 },
+      schedule: { expected: 0, parsed: 0 },
+      attachment: { expected: 0, parsed: 0 }
+    };
+
+    (Array.isArray(schemaRegistry) ? schemaRegistry : []).forEach((definition) => {
+      const field = fieldMap && fieldMap[definition.fieldId];
+      let bucket = "plan";
+      if (definition && definition.locationRef && definition.locationRef.form === "Attachment") {
+        bucket = "attachment";
+      } else if (definition && definition.locationRef && definition.locationRef.schedule) {
+        bucket = "schedule";
+      }
+      summary[bucket].expected += 1;
+      if (field && field.parseStatus === "parsed") {
+        summary[bucket].parsed += 1;
+      }
+    });
+
+    return summary;
   }
 
   return {
@@ -115,6 +157,7 @@
     createException,
     summarizeFieldMap,
     summarizeNumericValidation,
-    summarizeReviewState
+    summarizeReviewState,
+    summarizeCoverageByCategory
   };
 });

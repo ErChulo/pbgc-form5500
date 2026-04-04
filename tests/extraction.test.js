@@ -1,10 +1,18 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const core = require("../src/lib/core.js");
 const historicalRegistry = require("../src/lib/schema/historical-registry.js");
 const scheduleRouter = require("../src/lib/extraction/schedule-router.js");
 const ocrPipeline = require("../src/lib/extraction/ocr-pipeline.js");
+
+function loadFeature006Expectations() {
+  return JSON.parse(
+    fs.readFileSync(path.join(__dirname, "fixtures", "feature-006", "expected-values.json"), "utf8")
+  );
+}
 
 test("historical registry rewrites location references to the requested filing year", () => {
   const registry = historicalRegistry.getHistoricalSchemaRegistry(2013);
@@ -514,8 +522,304 @@ test("schedule i numeric rows satisfy canonical asset fields and numeric validat
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "265000");
   assert.equal(extracted.fields.participantCountBeginningOfYear.valueNumber, "85");
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.825");
-  assert.equal(extracted.metrics.filingNumericSufficiency, "sufficient");
+  assert.equal(extracted.metrics.filingNumericSufficiency, "partial");
   assert.ok(extracted.metrics.validatedNumericFieldCount >= 8);
+});
+
+test("feature 006 representative corpus metadata is available for validation scaffolding", () => {
+  const expectedValues = loadFeature006Expectations();
+
+  assert.equal(expectedValues.featureId, "006-full-filing-extraction");
+  assert.equal(
+    expectedValues.fixtures["college-st-rose-2021-pension"].scheduleHAccountantOpinion,
+    "disclaimer of opinion"
+  );
+  assert.equal(expectedValues.fixtures["college-st-rose-2024-pension"].assetsEndOfYear, "2330438");
+});
+
+test("expanded main-form and schedule-r fields map into the full filing scaffold", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Effective date of plan 01/01/1995",
+    "Employer identification number 22-3344556",
+    "Name of plan sponsor",
+    "Variant Holdings, Inc.",
+    "Telephone number of plan sponsor 518-555-1212",
+    "Mailing address 100 Main Street Albany, NY 12207",
+    "Business code 611000",
+    "The plan administrator is the same as plan sponsor",
+    "Schedule R",
+    "13 Contributing employers 13 4",
+    "14a Inactive participants receiving benefits 14a 39"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1006",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-full-scaffold.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.planEffectiveDate.valueDate, "1995-01-01");
+  assert.equal(extracted.fields.sponsorTelephoneNumber.valueText, "518-555-1212");
+  assert.equal(extracted.fields.planAdministratorSameAsSponsor.valueBoolean, true);
+  assert.equal(extracted.fields.contributingEmployerCount.valueNumber, "4");
+  assert.equal(extracted.fields.inactiveParticipantCount.valueNumber, "39");
+});
+
+test("attachment-derived financial statement and actuarial values map into the expanded scaffold", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule H",
+    "Schedule SB",
+    "STATEMENTS OF CHANGES IN NET ASSETS AVAILABLE FOR PLAN BENEFITS Year ended December 31, 2024 and 2023 2024 2023",
+    "Employer contributions 250,000 $ 225,000 $",
+    "Interest and dividend income 100,000 90,000",
+    "Benefits paid to participants 175,000 165,000",
+    "Administrative expenses 25,000 20,000",
+    "Net increase (decrease) before transfers to and from other plans 150,000 130,000",
+    "Actuarial present value of accumulated plan benefits 4,500,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1007",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-attachments.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.employerContributions.valueNumber, "250000");
+  assert.equal(extracted.fields.investmentIncome.valueNumber, "100000");
+  assert.equal(extracted.fields.benefitsPaid.valueNumber, "175000");
+  assert.equal(extracted.fields.administrativeExpenses.valueNumber, "25000");
+  assert.equal(extracted.fields.netChangeInAssets.valueNumber, "150000");
+  assert.equal(extracted.fields.actuarialPresentValueOfAccumulatedPlanBenefits.valueNumber, "4500000");
+});
+
+test("financial statement row extractors ignore table-of-contents page numbers and year headers", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 07/01/2021 and ending 06/30/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "TABLE OF CONTENTS Page Independent Auditor's Report 1 Statements of Changes in Net Assets Available for Plan Benefits 6",
+    "STATEMENTS OF CHANGES IN NET ASSETS AVAILABLE FOR PLAN BENEFITS Year ended June 30, 2022 and 2021 2022 2021",
+    "Employer contributions 250,000 225,000",
+    "Benefits paid to participants 175,000 165,000",
+    "Interest and dividend income 100,000 90,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1007b",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "northwind-attachments-noise.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.employerContributions.valueNumber, "250000");
+  assert.equal(extracted.fields.benefitsPaid.valueNumber, "175000");
+  assert.equal(extracted.fields.investmentIncome.valueNumber, "100000");
+});
+
+test("plan effective date is not inferred from summary footer dates without an explicit label", () => {
+  const documentText = [
+    "Form 5500 (2024) v. 240311 01/01/2021 12/31/2021 X X X X THE COLLEGE OF SAINT ROSE 403(B) RETIREMENT PLAN 002 10/02/1954 14-1338371 THE COLLEGE OF SAINT ROSE 518-454-5138 432 WESTERN AVENUE ALBANY, NY 12203 611000 Filed with authorized/valid electronic signature."
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1007c",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "summary-footer-no-effective-label.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.planEffectiveDate.parseStatus, "missing");
+  assert.equal(extracted.planNumber.valueCode, "002");
+});
+
+test("schedule a c and g boolean fields map into the expanded scaffold", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule A",
+    "Insurance in force yes",
+    "Schedule C",
+    "Indirect compensation yes",
+    "Schedule G",
+    "Reportable transactions no"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1008",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-schedule-flags.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.insuranceInForce.valueBoolean, true);
+  assert.equal(extracted.fields.serviceProviderCompensationIndirect.valueBoolean, true);
+  assert.equal(extracted.fields.reportableTransactionsPresent.valueBoolean, false);
+});
+
+test("expanded filing records preserve detected schedules and typed evidence source types", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule H",
+    "Schedule SB",
+    "STATEMENTS OF CHANGES IN NET ASSETS AVAILABLE FOR PLAN BENEFITS Year ended December 31, 2024 and 2023 2024 2023",
+    "Employer contributions 250,000 $ 225,000 $",
+    "Actuarial present value of accumulated plan benefits 4,500,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1009",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-context.pdf"
+    }
+  );
+
+  assert.equal(extracted.fileName, "variant-2024-context.pdf");
+  assert.equal(extracted.filingYear, "2024");
+  assert.deepEqual(extracted.detectedSchedules, ["H", "SB"]);
+  assert.equal(
+    extracted.extraction.evidence.find((entry) => entry.fieldId === "employerContributions").sourceType,
+    "financial-statement"
+  );
+  assert.equal(
+    extracted.extraction.evidence.find((entry) => entry.fieldId === "actuarialPresentValueOfAccumulatedPlanBenefits").sourceType,
+    "actuarial-attachment"
+  );
+});
+
+test("conflicting schedule and attachment values are preserved for review", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule H",
+    "1l Net assets (subtract line 1k from line 1f) 1l 900,000 1,130,000",
+    "STATEMENTS OF NET ASSETS AVAILABLE FOR PLAN BENEFITS December 31, 2024 and 2023 2024 2023",
+    "Net assets available for plan benefits 1,200,000 $ 950,000 $"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1011",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-conflict.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "900000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
+  assert.ok(extracted.extraction.exceptions.some((entry) => entry.fieldId === "netAssetsBeginningOfYear" && entry.code === "conflict"));
+  assert.ok(extracted.extraction.exceptions.some((entry) => entry.fieldId === "netAssetsEndOfYear" && entry.code === "conflict"));
+  assert.ok(
+    extracted.extraction.evidence.some((entry) => entry.fieldId === "netAssetsBeginningOfYear" && entry.status === "conflicting")
+  );
+  assert.ok(extracted.metrics.conflictCount >= 2);
+});
+
+test("schedule mb actuarial attachment values satisfy the shared canonical field", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Multiemployer Plan",
+    "Plan number 004",
+    "Employer identification number 22-3344556",
+    "Schedule MB",
+    "Actuarial present value of accumulated plan benefits 7,250,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1010",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-mb.pdf"
+    }
+  );
+
+  assert.deepEqual(extracted.detectedSchedules, ["MB"]);
+  assert.equal(extracted.fields.actuarialPresentValueOfAccumulatedPlanBenefits.valueNumber, "7250000");
 });
 
 test("participant line variants with 6a and 6g style codes are parsed", () => {

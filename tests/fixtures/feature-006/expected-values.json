@@ -1,0 +1,45 @@
+{
+  "featureId": "006-full-filing-extraction",
+  "description": "Known-good reference values currently available from the representative full-filing corpus.",
+  "fixtures": {
+    "college-st-rose-2021-pension": {
+      "planName": "THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN",
+      "planNumber": "001",
+      "sponsorEmployerIdentificationNumber": "141362562",
+      "planYearBeginDate": "2021-07-01",
+      "planYearEndDate": "2022-06-30",
+      "detectedSchedules": ["H", "R", "SB"],
+      "scheduleHAccountantOpinion": "disclaimer of opinion",
+      "assetsBeginningOfYear": "6069084",
+      "assetsEndOfYear": "4591004",
+      "netAssetsBeginningOfYear": "6069084",
+      "netAssetsEndOfYear": "4591004"
+    },
+    "college-st-rose-2021-403b": {
+      "planName": "THE COLLEGE OF SAINT ROSE 403(b) RETIREMENT PLAN",
+      "planNumber": "002",
+      "sponsorEmployerIdentificationNumber": "141362562",
+      "planYearBeginDate": "2021-01-01",
+      "planYearEndDate": "2021-12-31",
+      "detectedSchedules": ["H", "R"],
+      "scheduleHAccountantOpinion": "disclaimer of opinion",
+      "assetsBeginningOfYear": "128777761",
+      "assetsEndOfYear": "138220547",
+      "netAssetsBeginningOfYear": "128777761",
+      "netAssetsEndOfYear": "138220547"
+    },
+    "college-st-rose-2024-pension": {
+      "planName": "THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN",
+      "planNumber": "001",
+      "sponsorEmployerIdentificationNumber": "141362562",
+      "planYearBeginDate": "2024-07-01",
+      "planYearEndDate": "2025-04-20",
+      "detectedSchedules": ["H", "R", "SB"],
+      "scheduleHAccountantOpinion": "unmodified opinion",
+      "assetsBeginningOfYear": "3428971",
+      "assetsEndOfYear": "2330438",
+      "netAssetsBeginningOfYear": "3428971",
+      "netAssetsEndOfYear": "2330438"
+    }
+  }
+}

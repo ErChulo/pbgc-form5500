@@ -290,6 +290,69 @@
     return field.rawText || "";
   }
 
+  function getEffectiveFieldState(record, fieldId) {
+    if (!record || !record.fields || !record.fields[fieldId]) {
+      return "missing";
+    }
+    const field = record.fields[fieldId];
+    const exceptions = record.extraction && Array.isArray(record.extraction.exceptions) ? record.extraction.exceptions : [];
+    const fieldExceptions = exceptions.filter((entry) => entry && entry.fieldId === fieldId);
+    if (fieldExceptions.some((entry) => entry.code === "conflict")) {
+      return "conflicting";
+    }
+    if (fieldExceptions.some((entry) => entry.code === "masked-numeric-evidence")) {
+      return "masked";
+    }
+    if (fieldExceptions.some((entry) => entry.code === "schedule-not-present")) {
+      return "not-applicable";
+    }
+    if (field.parseStatus === "failed" || fieldExceptions.some((entry) => entry.code === "parse-failed")) {
+      return "failed";
+    }
+    if (field.parseStatus === "parsed") {
+      return "parsed";
+    }
+    return "missing";
+  }
+
+  function formatPlanNumber(value) {
+    const text = toText(value);
+    if (/^\d{1,3}$/.test(text)) {
+      return text.padStart(3, "0");
+    }
+    return text;
+  }
+
+  function getFieldDisplayText(field, fieldId) {
+    const text = getFieldText(field);
+    if (fieldId === "planNumber") {
+      return formatPlanNumber(text);
+    }
+    return text;
+  }
+
+  function serializeFieldForExport(record, fieldId) {
+    const field = record && record.fields ? record.fields[fieldId] : null;
+    const text = getFieldDisplayText(field, fieldId);
+    const state = getEffectiveFieldState(record, fieldId);
+    if (state === "parsed") {
+      return { text, state };
+    }
+    if (state === "conflicting") {
+      return { text: text ? `${text} [conflict]` : "[conflict]", state };
+    }
+    if (state === "masked") {
+      return { text: "[masked]", state };
+    }
+    if (state === "failed") {
+      return { text: text ? `${text} [failed]` : "[failed]", state };
+    }
+    if (state === "not-applicable") {
+      return { text: "[n/a]", state };
+    }
+    return { text: "[missing]", state };
+  }
+
   function createExtractedRecord(input) {
     const source = input || {};
     const schemaRegistry = source.schemaRegistry || getDefaultSchemaRegistry();
@@ -302,6 +365,9 @@
 
     const extracted = {
       ingestId: source.ingestId || "",
+      fileName: source.fileName || "",
+      filingYear: source.filingYear || "",
+      detectedSchedules: Array.isArray(source.detectedSchedules) ? [...source.detectedSchedules] : [],
       planName: source.planName || fields.planName || createEmptyField("text"),
       planNumber: source.planNumber || fields.planNumber || createEmptyField("code"),
       sponsorEmployerIdentificationNumber:
@@ -365,6 +431,9 @@
 
     return createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: source.fileName || "",
+      filingYear: row.planYear || "",
+      detectedSchedules: [],
       schemaRegistry,
       fieldMap,
       planName: fieldMap.planName,
@@ -383,6 +452,9 @@
     const inferredDates = inferDatesFromFilename(name);
     return createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: name || "",
+      filingYear: inferredDates.end ? inferredDates.end.slice(0, 4) : "",
+      detectedSchedules: [],
       planName: createEmptyField("text"),
       planNumber: createEmptyField("code"),
       sponsorEmployerIdentificationNumber: createEmptyField("code"),
@@ -398,8 +470,8 @@
   function buildExtractedFromPdfData(pdfData, options) {
     const source = options || {};
     const initialContext = scheduleRouterApi && typeof scheduleRouterApi.detectContext === "function"
-      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "")
-      : { filingYear: 2024, schedules: [] };
+      ? scheduleRouterApi.detectContext(pdfData.documentText, source.fileName || "", pdfData.pages || [])
+      : { filingYear: 2024, schedules: [], schedulePages: {}, pageTypes: [] };
     const schemaRegistry = source.schemaRegistry ||
       (historicalRegistryApi && typeof historicalRegistryApi.getHistoricalSchemaRegistry === "function"
         ? historicalRegistryApi.getHistoricalSchemaRegistry(initialContext.filingYear)
@@ -424,6 +496,9 @@
 
     const extracted = createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: source.fileName || "",
+      filingYear: String(initialContext.filingYear || ""),
+      detectedSchedules: initialContext.schedules || [],
       schemaRegistry,
       fieldMap: mapped.fieldMap,
       planName: mapped.fieldMap.planName || createEmptyField("text"),
@@ -467,12 +542,21 @@
     }
 
     if (qualityApi && typeof qualityApi.summarizeReviewState === "function") {
-      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions);
+      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions, extracted.extraction.evidence);
       extracted.metrics = {
         ...extracted.metrics,
         ...reviewState
       };
       extracted.extraction.reviewState = reviewState;
+    }
+
+    if (qualityApi && typeof qualityApi.summarizeCoverageByCategory === "function") {
+      const coverageByCategory = qualityApi.summarizeCoverageByCategory(extracted.fields, schemaRegistry);
+      extracted.metrics = {
+        ...extracted.metrics,
+        coverageByCategory
+      };
+      extracted.extraction.coverageByCategory = coverageByCategory;
     }
 
     return extracted;
@@ -567,19 +651,29 @@
 
     const rows = records.map((record) => {
       const row = {
-        planName: getFieldText(record.planName),
-        planNumber: getFieldText(record.planNumber),
-        sponsorEmployerIdentificationNumber: getFieldText(record.sponsorEmployerIdentificationNumber),
-        planYearBeginDate: getFieldText(record.planYearBeginDate),
-        planYearEndDate: getFieldText(record.planYearEndDate),
+        planName: getFieldDisplayText(record.planName, "planName"),
+        planNumber: getFieldDisplayText(record.planNumber, "planNumber"),
+        sponsorEmployerIdentificationNumber: getFieldDisplayText(record.sponsorEmployerIdentificationNumber, "sponsorEmployerIdentificationNumber"),
+        planYearBeginDate: getFieldDisplayText(record.planYearBeginDate, "planYearBeginDate"),
+        planYearEndDate: getFieldDisplayText(record.planYearEndDate, "planYearEndDate"),
         filingKind: getFieldText(record.filingKind),
         receivedTimestamp: getFieldText(record.receivedTimestamp),
         extractionQuality: `${record.metrics.parsedFieldCount}/${record.metrics.expectedFieldCount}`
       };
+      const cellMeta = {};
 
       additionalColumns.forEach((column) => {
-        row[column.key] = getFieldText(record.fields[column.fieldId]);
+        const serialized = serializeFieldForExport(record, column.fieldId);
+        row[column.key] = serialized.text;
+        cellMeta[column.key] = { state: serialized.state };
       });
+
+      row.__cellMeta = cellMeta;
+      row.__detectedSchedules = Array.isArray(record.detectedSchedules) ? [...record.detectedSchedules] : [];
+      row.__reviewSummary = {
+        conflictCount: Number(record.metrics.conflictCount || 0),
+        attachmentDerivedCount: Number(record.metrics.attachmentDerivedCount || 0)
+      };
 
       return row;
     });
@@ -597,6 +691,8 @@
       validatedNumericFieldCount: 0,
       targetedNumericFieldCount: 0,
       maskedNumericFieldCount: 0,
+      conflictCount: 0,
+      attachmentDerivedCount: 0,
       failedNumericFieldCount: 0,
       unresolvedNumericFieldCount: 0,
       notApplicableNumericFieldCount: 0
@@ -616,6 +712,8 @@
       totals.validatedNumericFieldCount += Number(metrics.validatedNumericFieldCount || 0);
       totals.targetedNumericFieldCount += Number(metrics.targetedNumericFieldCount || 0);
       totals.maskedNumericFieldCount += Number(metrics.maskedNumericFieldCount || 0);
+      totals.conflictCount += Number(metrics.conflictCount || 0);
+      totals.attachmentDerivedCount += Number(metrics.attachmentDerivedCount || 0);
       totals.failedNumericFieldCount += Number(metrics.failedNumericFieldCount || 0);
       totals.unresolvedNumericFieldCount += Number(metrics.unresolvedNumericFieldCount || 0);
       totals.notApplicableNumericFieldCount += Number(metrics.notApplicableNumericFieldCount || 0);
@@ -761,6 +859,7 @@
     parseCsv,
     quoteCsvCell,
     summarizeValidationCorpus,
-    toCsv
+    toCsv,
+    getEffectiveFieldState
   };
 });
