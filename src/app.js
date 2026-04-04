@@ -131,14 +131,17 @@
       parsedFieldCount: extracted.metrics.parsedFieldCount,
       expectedFieldCount: extracted.metrics.expectedFieldCount,
       exceptionCount: exceptions.length,
-      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId),
+      unresolvedFieldIds: Array.from(new Set(exceptions.map((entry) => entry.fieldId))).slice(0, 4),
       filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
       validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
       targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
       maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0,
+      conflictCount: extracted.metrics.conflictCount || 0,
+      attachmentDerivedCount: extracted.metrics.attachmentDerivedCount || 0,
       missingCount: extracted.metrics.missingCount || 0,
       failedCount: extracted.metrics.failedCount || 0,
-      notApplicableCount: extracted.metrics.notApplicableCount || 0
+      notApplicableCount: extracted.metrics.notApplicableCount || 0,
+      detectedSchedules: Array.isArray(extracted.detectedSchedules) ? extracted.detectedSchedules : []
     };
   }
 
@@ -149,6 +152,12 @@
     const parts = [];
     if (summary.maskedNumericFieldCount) {
       parts.push(`${summary.maskedNumericFieldCount} masked`);
+    }
+    if (summary.conflictCount) {
+      parts.push(`${summary.conflictCount} conflicts`);
+    }
+    if (summary.attachmentDerivedCount) {
+      parts.push(`${summary.attachmentDerivedCount} attachment-derived`);
     }
     if (summary.failedCount) {
       parts.push(`${summary.failedCount} failed`);
@@ -454,6 +463,10 @@
                       ? ` (${sanitizeHtml(String(item.extractionSummary.maskedNumericFieldCount))} masked)`
                       : ""
                   }</div>`
+                : ""
+            }${
+              item.extractionSummary.detectedSchedules.length
+                ? `<div class="muted">Schedules: ${sanitizeHtml(item.extractionSummary.detectedSchedules.join(", "))}</div>`
                 : ""
             }${
               describeExtractionSummary(item.extractionSummary)

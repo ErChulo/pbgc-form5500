@@ -186,10 +186,13 @@
     return null;
   }
 
-  function findLinePairValue(lines, aliases, pairIndex, sourceLabel) {
+  function findLinePairValue(lines, aliases, pairIndex, sourceLabel, excludePattern) {
     const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?(?![A-Za-z])/g;
     for (const line of lines) {
       if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      if (excludePattern && excludePattern.test(line)) {
         continue;
       }
       const matches = line.match(numberPattern);
@@ -553,6 +556,7 @@
     const exceptions = [];
     const rawValues = {};
     const rawMatches = {};
+    const conflicts = [];
 
     function inferSourceType(definition, matchDetails) {
       const sourceLabel = String(matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : "").toLowerCase();
@@ -569,6 +573,23 @@
         return "schedule";
       }
       return "main-form";
+    }
+
+    function registerConflict(fieldId, preferredMatch, alternateMatch) {
+      if (!preferredMatch || !alternateMatch) {
+        return;
+      }
+      if (isLikelyPlaceholderMatch(preferredMatch) || isLikelyPlaceholderMatch(alternateMatch)) {
+        return;
+      }
+      if (sanitizeExtractedText(preferredMatch.value) === sanitizeExtractedText(alternateMatch.value)) {
+        return;
+      }
+      conflicts.push({
+        fieldId,
+        preferredMatch,
+        alternateMatch
+      });
     }
 
     const summaryMatches = parseBasicPlanInfoFromSummary(prepared.joinedText);
@@ -670,24 +691,28 @@
       { labelPattern: "Total number of participants", lineCode: "6g" },
       { labelPattern: "Total\\. Add lines 6e and 6f", lineCode: "6g" }
     ]) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
-    rawMatches.assetsBeginningOfYear =
+    const scheduleAssetsBeginningOfYear =
       findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0) ||
       findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 0);
-    rawMatches.assetsEndOfYear =
+    const scheduleAssetsEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 1);
+    rawMatches.assetsBeginningOfYear = scheduleAssetsBeginningOfYear;
+    rawMatches.assetsEndOfYear = scheduleAssetsEndOfYear;
     rawMatches.liabilitiesBeginningOfYear =
       findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0) ||
       findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 0);
     rawMatches.liabilitiesEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 1);
-    rawMatches.netAssetsBeginningOfYear =
+    const scheduleNetAssetsBeginningOfYear =
       findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0) ||
       findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 0);
-    rawMatches.netAssetsEndOfYear =
+    const scheduleNetAssetsEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 1);
+    rawMatches.netAssetsBeginningOfYear = scheduleNetAssetsBeginningOfYear;
+    rawMatches.netAssetsEndOfYear = scheduleNetAssetsEndOfYear;
     rawMatches.scheduleHAccountantOpinion =
       findAccountantOpinion(prepared.joinedText) || findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
@@ -767,25 +792,51 @@
       findTrailingLineCodeValue(prepared.joinedText, "Inactive participants receiving benefits", "14a", "\\d[\\d,]*") ||
       findSingleValue(prepared.joinedText, ["inactive participants receiving benefits"], "\\d[\\d,]*");
 
-    if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
-      rawMatches.netAssetsBeginningOfYear = findFinancialStatementPair(
+    const statementNetAssetsBeginningOfYear =
+      findLinePairValue(
+        prepared.lines,
+        ["Net assets available(?: for (?:plan )?benefits)?"],
+        1,
+        "financial-statements",
+        /statements?\s+of\s+net\s+assets|year ended|december\s+\d{1,2},?\s+\d{4}|june\s+\d{1,2},?\s+\d{4}/i
+      ) ||
+      findFinancialStatementPair(
         prepared.joinedText,
         "Net assets available(?: for (?:plan )?benefits)?",
         1
-      ) || rawMatches.netAssetsBeginningOfYear;
-    }
-    if (!rawMatches.netAssetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsEndOfYear)) {
-      rawMatches.netAssetsEndOfYear = findFinancialStatementPair(
+      );
+    const statementNetAssetsEndOfYear =
+      findLinePairValue(
+        prepared.lines,
+        ["Net assets available(?: for (?:plan )?benefits)?"],
+        0,
+        "financial-statements",
+        /statements?\s+of\s+net\s+assets|year ended|december\s+\d{1,2},?\s+\d{4}|june\s+\d{1,2},?\s+\d{4}/i
+      ) ||
+      findFinancialStatementPair(
         prepared.joinedText,
         "Net assets available(?: for (?:plan )?benefits)?",
         0
-      ) || rawMatches.netAssetsEndOfYear;
+      );
+    const statementAssetsBeginningOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 1);
+    const statementAssetsEndOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 0);
+
+    registerConflict("netAssetsBeginningOfYear", scheduleNetAssetsBeginningOfYear, statementNetAssetsBeginningOfYear);
+    registerConflict("netAssetsEndOfYear", scheduleNetAssetsEndOfYear, statementNetAssetsEndOfYear);
+    registerConflict("assetsBeginningOfYear", scheduleAssetsBeginningOfYear, statementAssetsBeginningOfYear);
+    registerConflict("assetsEndOfYear", scheduleAssetsEndOfYear, statementAssetsEndOfYear);
+
+    if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
+      rawMatches.netAssetsBeginningOfYear = statementNetAssetsBeginningOfYear || rawMatches.netAssetsBeginningOfYear;
+    }
+    if (!rawMatches.netAssetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsEndOfYear)) {
+      rawMatches.netAssetsEndOfYear = statementNetAssetsEndOfYear || rawMatches.netAssetsEndOfYear;
     }
     if (!rawMatches.assetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.assetsBeginningOfYear)) {
-      rawMatches.assetsBeginningOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 1) || rawMatches.assetsBeginningOfYear;
+      rawMatches.assetsBeginningOfYear = statementAssetsBeginningOfYear || rawMatches.assetsBeginningOfYear;
     }
     if (!rawMatches.assetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.assetsEndOfYear)) {
-      rawMatches.assetsEndOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 0) || rawMatches.assetsEndOfYear;
+      rawMatches.assetsEndOfYear = statementAssetsEndOfYear || rawMatches.assetsEndOfYear;
     }
 
     Object.keys(rawMatches).forEach((fieldId) => {
@@ -821,6 +872,25 @@
           sourceLabel: matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : definition.name,
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
+        conflicts
+          .filter((entry) => entry.fieldId === definition.fieldId)
+          .forEach((entry) => {
+            evidence.push({
+              fieldId: definition.fieldId,
+              status: "conflicting",
+              sourceType: inferSourceType(definition, entry.alternateMatch),
+              sourcePage: entry.alternateMatch && entry.alternateMatch.sourcePage != null ? entry.alternateMatch.sourcePage : null,
+              sourceLabel: entry.alternateMatch && entry.alternateMatch.sourceLabel ? entry.alternateMatch.sourceLabel : definition.name,
+              excerpt: entry.alternateMatch && entry.alternateMatch.excerpt ? entry.alternateMatch.excerpt : entry.alternateMatch.value
+            });
+            exceptions.push({
+              fieldId: definition.fieldId,
+              code: "conflict",
+              message: "Multiple non-placeholder sources disagree for this field.",
+              sourcePage: entry.alternateMatch && entry.alternateMatch.sourcePage != null ? entry.alternateMatch.sourcePage : null,
+              sourceLabel: entry.alternateMatch && entry.alternateMatch.sourceLabel ? entry.alternateMatch.sourceLabel : definition.name
+            });
+          });
       } else {
         const maskedNumericEvidence = isNumericType(definition.dataType) && matchDetails && isLikelyPlaceholderMatch(matchDetails);
         exceptions.push({

@@ -696,6 +696,44 @@ test("expanded filing records preserve detected schedules and typed evidence sou
   );
 });
 
+test("conflicting schedule and attachment values are preserved for review", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule H",
+    "1l Net assets (subtract line 1k from line 1f) 1l 900,000 1,130,000",
+    "STATEMENTS OF NET ASSETS AVAILABLE FOR PLAN BENEFITS December 31, 2024 and 2023 2024 2023",
+    "Net assets available for plan benefits 1,200,000 $ 950,000 $"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1011",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-conflict.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "900000");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "1130000");
+  assert.ok(extracted.extraction.exceptions.some((entry) => entry.fieldId === "netAssetsBeginningOfYear" && entry.code === "conflict"));
+  assert.ok(extracted.extraction.exceptions.some((entry) => entry.fieldId === "netAssetsEndOfYear" && entry.code === "conflict"));
+  assert.ok(
+    extracted.extraction.evidence.some((entry) => entry.fieldId === "netAssetsBeginningOfYear" && entry.status === "conflicting")
+  );
+  assert.ok(extracted.metrics.conflictCount >= 2);
+});
+
 test("schedule mb actuarial attachment values satisfy the shared canonical field", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",
