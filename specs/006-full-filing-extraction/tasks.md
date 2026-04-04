@@ -137,8 +137,8 @@
 
 - [ ] T035 [P] Run representative-corpus validation and document coverage results in `specs/006-full-filing-extraction/quickstart.md`
 - [ ] T036 Verify keyboard accessibility, visible focus, and high-contrast behavior for expanded review and All years screens in `src/app.js`, `src/index.template.html`, and `src/styles.css`
-- [ ] T037 [P] Optimize extraction and rendering hotspots to keep queue interaction responsive with at least 50 filings in `src/app.js`, `src/lib/core.js`, and `src/lib/extraction/quality.js`
-- [ ] T038 Rebuild the single-file artifact and verify `/dist` contains exactly `dist/form5500-ingestor-v0.7.0.html`
+- [x] T037 [P] Optimize extraction and rendering hotspots to keep queue interaction responsive with at least 50 filings in `src/app.js`, `src/lib/core.js`, and `src/lib/extraction/quality.js`
+- [x] T038 Rebuild the single-file artifact and verify `/dist` contains exactly `dist/form5500-ingestor-v0.7.0.html`
 
 ---
 

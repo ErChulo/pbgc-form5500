@@ -17,6 +17,7 @@
   const state = {
     queueItems: [],
     extractedById: {},
+    dataRevision: 0,
     schemaRegistry,
     settings: {
       highContrast: false,
@@ -24,6 +25,11 @@
         .filter((field) => field.exportGroup === "allYears")
         .filter((field) => !mandatoryColumnKeys.includes(field.name))
         .map((field) => field.name)
+    },
+    derived: {
+      dataRevision: -1,
+      aggregated: null,
+      corpusSummary: null
     },
     previewUrl: null,
     idCounter: 0,
@@ -118,12 +124,14 @@
       extractionSummary: null
     };
     state.queueItems.push(item);
+    state.dataRevision += 1;
     scheduleExtractionForItem(item);
     return item;
   }
 
   function setExtractedRecord(item, extracted) {
     state.extractedById[item.id] = extracted;
+    state.dataRevision += 1;
     const exceptions = extracted.extraction && Array.isArray(extracted.extraction.exceptions)
       ? extracted.extraction.exceptions
       : [];
@@ -270,7 +278,25 @@
       URL.revokeObjectURL(item.previewObjectUrl);
     }
     delete state.extractedById[itemId];
+    state.dataRevision += 1;
     scheduleRender();
+  }
+
+  function getDerivedAllYears() {
+    if (state.derived.dataRevision === state.dataRevision && state.derived.aggregated && state.derived.corpusSummary) {
+      return state.derived;
+    }
+
+    const records = Object.values(state.extractedById);
+    const aggregated = core.aggregateAllYears(records, state.schemaRegistry);
+    const corpusSummary = core.summarizeValidationCorpus(records);
+
+    state.derived = {
+      dataRevision: state.dataRevision,
+      aggregated,
+      corpusSummary
+    };
+    return state.derived;
   }
 
   function setActiveTab(tabName) {
@@ -505,8 +531,8 @@
       .join("");
   }
 
-  function getVisibleColumns() {
-    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
+  function getVisibleColumns(aggregatedOverride) {
+    const aggregated = aggregatedOverride || getDerivedAllYears().aggregated;
     const additional = aggregated.additionalColumns.filter((column) =>
       state.settings.visibleAdditionalColumns.includes(column.key)
     );
@@ -514,8 +540,7 @@
   }
 
   function renderAllYears() {
-    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
-    const corpusSummary = core.summarizeValidationCorpus(Object.values(state.extractedById));
+    const { aggregated, corpusSummary } = getDerivedAllYears();
     const visibleColumns = [
       ...aggregated.mandatoryColumns,
       ...aggregated.additionalColumns.filter((column) => state.settings.visibleAdditionalColumns.includes(column.key))
@@ -594,8 +619,8 @@
   }
 
   function exportAllYears() {
-    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
-    const columns = getVisibleColumns();
+    const { aggregated } = getDerivedAllYears();
+    const columns = getVisibleColumns(aggregated);
     const csv = core.toCsv(columns, aggregated.rows);
     const filename = core.createExportFileName(aggregated.rows, core.VERSION);
     downloadBlob(filename, csv);
@@ -603,8 +628,8 @@
   }
 
   async function copyAllYears() {
-    const aggregated = core.aggregateAllYears(Object.values(state.extractedById), state.schemaRegistry);
-    const columns = getVisibleColumns();
+    const { aggregated } = getDerivedAllYears();
+    const columns = getVisibleColumns(aggregated);
     const csv = core.toCsv(columns, aggregated.rows);
     try {
       await navigator.clipboard.writeText(csv);
