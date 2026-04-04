@@ -619,6 +619,113 @@ test("attachment-derived financial statement and actuarial values map into the e
   assert.equal(extracted.fields.actuarialPresentValueOfAccumulatedPlanBenefits.valueNumber, "4500000");
 });
 
+test("schedule a c and g boolean fields map into the expanded scaffold", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule A",
+    "Insurance in force yes",
+    "Schedule C",
+    "Indirect compensation yes",
+    "Schedule G",
+    "Reportable transactions no"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1008",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-schedule-flags.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.insuranceInForce.valueBoolean, true);
+  assert.equal(extracted.fields.serviceProviderCompensationIndirect.valueBoolean, true);
+  assert.equal(extracted.fields.reportableTransactionsPresent.valueBoolean, false);
+});
+
+test("expanded filing records preserve detected schedules and typed evidence source types", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Pension Plan",
+    "Plan number 003",
+    "Employer identification number 22-3344556",
+    "Schedule H",
+    "Schedule SB",
+    "STATEMENTS OF CHANGES IN NET ASSETS AVAILABLE FOR PLAN BENEFITS Year ended December 31, 2024 and 2023 2024 2023",
+    "Employer contributions 250,000 $ 225,000 $",
+    "Actuarial present value of accumulated plan benefits 4,500,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1009",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-context.pdf"
+    }
+  );
+
+  assert.equal(extracted.fileName, "variant-2024-context.pdf");
+  assert.equal(extracted.filingYear, "2024");
+  assert.deepEqual(extracted.detectedSchedules, ["H", "SB"]);
+  assert.equal(
+    extracted.extraction.evidence.find((entry) => entry.fieldId === "employerContributions").sourceType,
+    "financial-statement"
+  );
+  assert.equal(
+    extracted.extraction.evidence.find((entry) => entry.fieldId === "actuarialPresentValueOfAccumulatedPlanBenefits").sourceType,
+    "actuarial-attachment"
+  );
+});
+
+test("schedule mb actuarial attachment values satisfy the shared canonical field", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2024 and ending 12/31/2024",
+    "Name of plan",
+    "Variant Multiemployer Plan",
+    "Plan number 004",
+    "Employer identification number 22-3344556",
+    "Schedule MB",
+    "Actuarial present value of accumulated plan benefits 7,250,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1010",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "variant-2024-mb.pdf"
+    }
+  );
+
+  assert.deepEqual(extracted.detectedSchedules, ["MB"]);
+  assert.equal(extracted.fields.actuarialPresentValueOfAccumulatedPlanBenefits.valueNumber, "7250000");
+});
+
 test("participant line variants with 6a and 6g style codes are parsed", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",

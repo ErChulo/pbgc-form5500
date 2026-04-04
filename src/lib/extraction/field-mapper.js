@@ -371,10 +371,26 @@
 
   function findSingleValue(joinedText, aliases, valuePattern) {
     for (const alias of aliases) {
-        const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(" + valuePattern + ")", "i");
+      const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(" + valuePattern + ")", "i");
       const match = joinedText.match(regex);
       if (match) {
         return { value: sanitizeExtractedText(match[1]), sourceLabel: alias, sourcePage: null, excerpt: match[0] };
+      }
+    }
+    return null;
+  }
+
+  function findBooleanValue(joinedText, aliases) {
+    for (const alias of aliases) {
+      const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(yes|no)\\b", "i");
+      const match = joinedText.match(regex);
+      if (match) {
+        return {
+          value: sanitizeExtractedText(match[1]),
+          sourceLabel: alias,
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(match[0]).slice(0, 300)
+        };
       }
     }
     return null;
@@ -538,6 +554,23 @@
     const rawValues = {};
     const rawMatches = {};
 
+    function inferSourceType(definition, matchDetails) {
+      const sourceLabel = String(matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : "").toLowerCase();
+      if (sourceLabel.includes("financial-statements")) {
+        return "financial-statement";
+      }
+      if (sourceLabel.includes("actuarial")) {
+        return "actuarial-attachment";
+      }
+      if (definition && definition.locationRef && definition.locationRef.form === "Attachment") {
+        return "other-attachment";
+      }
+      if (definition && definition.locationRef && definition.locationRef.schedule) {
+        return "schedule";
+      }
+      return "main-form";
+    }
+
     const summaryMatches = parseBasicPlanInfoFromSummary(prepared.joinedText);
     const planYearDates = detectPlanYearDates(prepared.joinedText);
     rawMatches.planYearBeginDate =
@@ -581,6 +614,21 @@
             excerpt: "same as plan sponsor"
           }
         : findSingleValue(prepared.joinedText, ["plan administrator same as sponsor"], "yes|no");
+    rawMatches.insuranceInForce = findBooleanValue(prepared.joinedText, [
+      "insurance in force",
+      "schedule a[^\\n]*insurance",
+      "benefits provided by an insurance carrier"
+    ]);
+    rawMatches.serviceProviderCompensationIndirect = findBooleanValue(prepared.joinedText, [
+      "indirect compensation",
+      "service provider compensation indirect",
+      "received indirect compensation"
+    ]);
+    rawMatches.reportableTransactionsPresent = findBooleanValue(prepared.joinedText, [
+      "reportable transactions",
+      "nonexempt transaction",
+      "schedule g[^\\n]*reportable"
+    ]);
     rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
       { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
       { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
@@ -768,6 +816,7 @@
         evidence.push({
           fieldId: definition.fieldId,
           status: "parsed",
+          sourceType: inferSourceType(definition, matchDetails),
           sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,
           sourceLabel: matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : definition.name,
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue

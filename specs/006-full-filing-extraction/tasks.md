@@ -50,17 +50,17 @@
 
 ### Tests for User Story 1 ⚠️
 
-- [ ] T010 [P] [US1] Add main-form and schedule extraction regressions in `tests/extraction.test.js`
-- [ ] T011 [P] [US1] Add attachment-derived value regressions for audited financial statements and actuarial attachments in `tests/extraction.test.js`
+- [x] T010 [P] [US1] Add main-form and schedule extraction regressions in `tests/extraction.test.js`
+- [x] T011 [P] [US1] Add attachment-derived value regressions for audited financial statements and actuarial attachments in `tests/extraction.test.js`
 
 ### Implementation for User Story 1
 
-- [ ] T012 [US1] Implement main-form extraction coverage for the expanded canonical field set in `src/lib/extraction/field-mapper.js`
-- [ ] T013 [US1] Implement Schedule H and Schedule I field extraction coverage in `src/lib/extraction/field-mapper.js`
-- [ ] T014 [US1] Implement Schedule SB and Schedule MB field extraction coverage in `src/lib/extraction/field-mapper.js`
-- [ ] T015 [US1] Implement Schedule A, Schedule C, Schedule D, Schedule G, and Schedule R extraction coverage in `src/lib/extraction/field-mapper.js`
-- [ ] T016 [US1] Implement attachment-aware extraction for audited financial statements and actuarial attachments in `src/lib/extraction/field-mapper.js`
-- [ ] T017 [US1] Integrate expanded typed-field results into filing record construction in `src/lib/core.js`
+- [x] T012 [US1] Implement main-form extraction coverage for the expanded canonical field set in `src/lib/extraction/field-mapper.js`
+- [x] T013 [US1] Implement Schedule H and Schedule I field extraction coverage in `src/lib/extraction/field-mapper.js`
+- [x] T014 [US1] Implement Schedule SB and Schedule MB field extraction coverage in `src/lib/extraction/field-mapper.js`
+- [x] T015 [US1] Implement Schedule A, Schedule C, Schedule D, Schedule G, and Schedule R extraction coverage in `src/lib/extraction/field-mapper.js`
+- [x] T016 [US1] Implement attachment-aware extraction for audited financial statements and actuarial attachments in `src/lib/extraction/field-mapper.js`
+- [x] T017 [US1] Integrate expanded typed-field results into filing record construction in `src/lib/core.js`
 
 **Checkpoint**: User Story 1 should produce one materially complete extracted filing record for text-searchable representative filings
 

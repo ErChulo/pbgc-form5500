@@ -302,6 +302,9 @@
 
     const extracted = {
       ingestId: source.ingestId || "",
+      fileName: source.fileName || "",
+      filingYear: source.filingYear || "",
+      detectedSchedules: Array.isArray(source.detectedSchedules) ? [...source.detectedSchedules] : [],
       planName: source.planName || fields.planName || createEmptyField("text"),
       planNumber: source.planNumber || fields.planNumber || createEmptyField("code"),
       sponsorEmployerIdentificationNumber:
@@ -365,6 +368,9 @@
 
     return createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: source.fileName || "",
+      filingYear: row.planYear || "",
+      detectedSchedules: [],
       schemaRegistry,
       fieldMap,
       planName: fieldMap.planName,
@@ -383,6 +389,9 @@
     const inferredDates = inferDatesFromFilename(name);
     return createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: name || "",
+      filingYear: inferredDates.end ? inferredDates.end.slice(0, 4) : "",
+      detectedSchedules: [],
       planName: createEmptyField("text"),
       planNumber: createEmptyField("code"),
       sponsorEmployerIdentificationNumber: createEmptyField("code"),
@@ -424,6 +433,9 @@
 
     const extracted = createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: source.fileName || "",
+      filingYear: String(initialContext.filingYear || ""),
+      detectedSchedules: initialContext.schedules || [],
       schemaRegistry,
       fieldMap: mapped.fieldMap,
       planName: mapped.fieldMap.planName || createEmptyField("text"),

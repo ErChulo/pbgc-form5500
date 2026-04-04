@@ -1545,10 +1545,26 @@ window.__FORM5500_VENDOR__ = {
 
   function findSingleValue(joinedText, aliases, valuePattern) {
     for (const alias of aliases) {
-        const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(" + valuePattern + ")", "i");
+      const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(" + valuePattern + ")", "i");
       const match = joinedText.match(regex);
       if (match) {
         return { value: sanitizeExtractedText(match[1]), sourceLabel: alias, sourcePage: null, excerpt: match[0] };
+      }
+    }
+    return null;
+  }
+
+  function findBooleanValue(joinedText, aliases) {
+    for (const alias of aliases) {
+      const regex = new RegExp(alias + "\\s*[:\\-]?\\s*(yes|no)\\b", "i");
+      const match = joinedText.match(regex);
+      if (match) {
+        return {
+          value: sanitizeExtractedText(match[1]),
+          sourceLabel: alias,
+          sourcePage: null,
+          excerpt: sanitizeExtractedText(match[0]).slice(0, 300)
+        };
       }
     }
     return null;
@@ -1712,6 +1728,23 @@ window.__FORM5500_VENDOR__ = {
     const rawValues = {};
     const rawMatches = {};
 
+    function inferSourceType(definition, matchDetails) {
+      const sourceLabel = String(matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : "").toLowerCase();
+      if (sourceLabel.includes("financial-statements")) {
+        return "financial-statement";
+      }
+      if (sourceLabel.includes("actuarial")) {
+        return "actuarial-attachment";
+      }
+      if (definition && definition.locationRef && definition.locationRef.form === "Attachment") {
+        return "other-attachment";
+      }
+      if (definition && definition.locationRef && definition.locationRef.schedule) {
+        return "schedule";
+      }
+      return "main-form";
+    }
+
     const summaryMatches = parseBasicPlanInfoFromSummary(prepared.joinedText);
     const planYearDates = detectPlanYearDates(prepared.joinedText);
     rawMatches.planYearBeginDate =
@@ -1755,6 +1788,21 @@ window.__FORM5500_VENDOR__ = {
             excerpt: "same as plan sponsor"
           }
         : findSingleValue(prepared.joinedText, ["plan administrator same as sponsor"], "yes|no");
+    rawMatches.insuranceInForce = findBooleanValue(prepared.joinedText, [
+      "insurance in force",
+      "schedule a[^\\n]*insurance",
+      "benefits provided by an insurance carrier"
+    ]);
+    rawMatches.serviceProviderCompensationIndirect = findBooleanValue(prepared.joinedText, [
+      "indirect compensation",
+      "service provider compensation indirect",
+      "received indirect compensation"
+    ]);
+    rawMatches.reportableTransactionsPresent = findBooleanValue(prepared.joinedText, [
+      "reportable transactions",
+      "nonexempt transaction",
+      "schedule g[^\\n]*reportable"
+    ]);
     rawMatches.participantCountBeginningOfYear = findFirstTrailingLineCodeNumber(prepared.joinedText, [
       { labelPattern: "5\\s+Total number of participants at the beginning of the plan year", lineCode: "5" },
       { labelPattern: "Total number of participants at the beginning of the plan year", lineCode: "6a" }
@@ -1942,6 +1990,7 @@ window.__FORM5500_VENDOR__ = {
         evidence.push({
           fieldId: definition.fieldId,
           status: "parsed",
+          sourceType: inferSourceType(definition, matchDetails),
           sourcePage: matchDetails && matchDetails.sourcePage != null ? matchDetails.sourcePage : null,
           sourceLabel: matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : definition.name,
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
@@ -2399,6 +2448,9 @@ window.__FORM5500_VENDOR__ = {
 
     const extracted = {
       ingestId: source.ingestId || "",
+      fileName: source.fileName || "",
+      filingYear: source.filingYear || "",
+      detectedSchedules: Array.isArray(source.detectedSchedules) ? [...source.detectedSchedules] : [],
       planName: source.planName || fields.planName || createEmptyField("text"),
       planNumber: source.planNumber || fields.planNumber || createEmptyField("code"),
       sponsorEmployerIdentificationNumber:
@@ -2462,6 +2514,9 @@ window.__FORM5500_VENDOR__ = {
 
     return createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: source.fileName || "",
+      filingYear: row.planYear || "",
+      detectedSchedules: [],
       schemaRegistry,
       fieldMap,
       planName: fieldMap.planName,
@@ -2480,6 +2535,9 @@ window.__FORM5500_VENDOR__ = {
     const inferredDates = inferDatesFromFilename(name);
     return createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: name || "",
+      filingYear: inferredDates.end ? inferredDates.end.slice(0, 4) : "",
+      detectedSchedules: [],
       planName: createEmptyField("text"),
       planNumber: createEmptyField("code"),
       sponsorEmployerIdentificationNumber: createEmptyField("code"),
@@ -2521,6 +2579,9 @@ window.__FORM5500_VENDOR__ = {
 
     const extracted = createExtractedRecord({
       ingestId: source.ingestId,
+      fileName: source.fileName || "",
+      filingYear: String(initialContext.filingYear || ""),
+      detectedSchedules: initialContext.schedules || [],
       schemaRegistry,
       fieldMap: mapped.fieldMap,
       planName: mapped.fieldMap.planName || createEmptyField("text"),
