@@ -244,6 +244,55 @@ test("financial statements provide a fallback for net assets when schedule rows 
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "4591004");
 });
 
+test("auditor report text maps explicit accountant opinion states", () => {
+  const unmodifiedText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Schedule H",
+    "INDEPENDENT AUDITOR'S REPORT",
+    "Opinion",
+    "In our opinion, based on our audits and on the procedures performed as described in the Auditor's Responsibilities for the Audit of the Financial Statements section the amounts and disclosures in the accompanying financial statements are presented fairly, in all material respects, in accordance with accounting principles generally accepted in the United States of America."
+  ].join("\n");
+
+  const disclaimerText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Schedule H",
+    "Auditor's Report on the 2021 Financial Statements",
+    "We were engaged to audit the 2021 financial statements.",
+    "Because of the significance of the information that we did not audit, we were not able to obtain sufficient appropriate audit evidence to provide a basis for an audit opinion and accordingly, we did not express an opinion on the 2021 financial statements."
+  ].join("\n");
+
+  const unmodified = core.buildExtractedFromPdfData(
+    {
+      documentText: unmodifiedText,
+      pages: [{ pageNumber: 1, text: unmodifiedText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000h",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "northwind-unmodified-opinion.pdf"
+    }
+  );
+
+  const disclaimer = core.buildExtractedFromPdfData(
+    {
+      documentText: disclaimerText,
+      pages: [{ pageNumber: 1, text: disclaimerText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000i",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "northwind-disclaimer-opinion.pdf"
+    }
+  );
+
+  assert.equal(unmodified.fields.scheduleHAccountantOpinion.valueText, "unmodified opinion");
+  assert.equal(disclaimer.fields.scheduleHAccountantOpinion.valueText, "disclaimer of opinion");
+});
+
 test("redacted schedule placeholders are treated as missing instead of parsed values", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",

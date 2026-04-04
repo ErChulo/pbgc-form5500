@@ -1682,6 +1682,35 @@ dialog::backdrop {
     };
   }
 
+  function findAccountantOpinion(joinedText) {
+    const text = sanitizeExtractedText(joinedText);
+    if (!text) {
+      return null;
+    }
+
+    const disclaimerMatch = text.match(/did not express an opinion on the (?:\d{4}\s+)?financial statements/i);
+    if (disclaimerMatch) {
+      return {
+        value: "disclaimer of opinion",
+        sourceLabel: "auditor-report",
+        sourcePage: null,
+        excerpt: sanitizeExtractedText(disclaimerMatch[0]).slice(0, 500)
+      };
+    }
+
+    const unmodifiedMatch = text.match(/in our opinion[^.]{0,500}?presented fairly,? in all material respects/i);
+    if (unmodifiedMatch) {
+      return {
+        value: "unmodified opinion",
+        sourceLabel: "auditor-report",
+        sourcePage: null,
+        excerpt: sanitizeExtractedText(unmodifiedMatch[0]).slice(0, 500)
+      };
+    }
+
+    return null;
+  }
+
   function isNumericType(dataType) {
     return ["integer", "decimal", "currency", "percent"].includes(dataType);
   }
@@ -1940,7 +1969,8 @@ dialog::backdrop {
     rawMatches.netAssetsEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 1);
-    rawMatches.scheduleHAccountantOpinion = findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
+    rawMatches.scheduleHAccountantOpinion =
+      findAccountantOpinion(prepared.joinedText) || findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
       findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
