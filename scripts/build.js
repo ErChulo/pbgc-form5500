@@ -1,11 +1,24 @@
 const fs = require("node:fs");
 const path = require("node:path");
+const { execSync } = require("node:child_process");
 
 const rootDir = path.resolve(__dirname, "..");
 const srcDir = path.join(rootDir, "src");
 const distDir = path.join(rootDir, "dist");
 const outputName = "form5500-ingestor-v0.7.0.html";
 const outputPath = path.join(distDir, outputName);
+
+function getBuildCommit() {
+  try {
+    return execSync("git rev-parse --short HEAD", {
+      cwd: rootDir,
+      stdio: ["ignore", "pipe", "ignore"],
+      encoding: "utf8"
+    }).trim();
+  } catch (_error) {
+    return "unknown";
+  }
+}
 
 function read(filePath) {
   return fs.readFileSync(filePath, "utf8");
@@ -50,8 +63,10 @@ const vendorBootstrap = [
   `  pdfWorkerBase64: ${JSON.stringify(fs.readFileSync(pdfWorkerPath).toString("base64"))}`,
   "};"
 ].join("\n");
+const buildCommit = getBuildCommit();
 
 const html = template
+  .replace("__BUILD_COMMIT__", buildCommit)
   .replace("/*__INLINE_CSS__*/", css)
   .replace(
     "/*__INLINE_JS__*/",
