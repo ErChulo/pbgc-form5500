@@ -244,6 +244,41 @@ test("financial statements provide a fallback for net assets when schedule rows 
   assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "4591004");
 });
 
+test("financial statement fallback accepts benefit-plan statements without the plan word", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2021 and ending 12/31/2021",
+    "Name of plan",
+    "Northwind 403(b) Retirement Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "1l Net assets (subtract line 1k from line 1f) 1l -123456789012345 -123456789012345",
+    "STATEMENTS OF NET ASSETS AVAILABLE FOR BENEFITS December 31, 2021 and 2020 2021 2020",
+    "ASSETS Investments at fair value 126,991,219 $ 116,901,324 $",
+    "Investments at contract value 11,183,842 11,872,644",
+    "Notes receivable from participants 45,486 3,793",
+    "Net assets available for benefits 138,220,547 $ 128,777,761 $"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1000j",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "northwind-403b-benefits-statements.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.netAssetsBeginningOfYear.valueNumber, "128777761");
+  assert.equal(extracted.fields.netAssetsEndOfYear.valueNumber, "138220547");
+});
+
 test("auditor report text maps explicit accountant opinion states", () => {
   const unmodifiedText = [
     "Annual Return/Report of Employee Benefit Plan",

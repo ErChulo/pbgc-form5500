@@ -189,7 +189,7 @@
   function findFinancialStatementPair(joinedText, rowLabelPattern, pairIndex) {
     const numberPattern = "[-(]?(?:\\$)?\\d[\\d,]*(?:\\.\\d+)?\\)?";
     const regex = new RegExp(
-      `statements? of net assets available for plan benefits[^]{0,1200}?(?:assets\\b|investments?,? at fair value)[^]{0,1200}?${rowLabelPattern}\\s+(${numberPattern})\\s*\\$?\\s+(${numberPattern})`,
+      `statements? of net assets available for (?:plan )?benefits[^]{0,1200}?(?:assets\\b|investments?,? at fair value)[^]{0,1200}?${rowLabelPattern}\\s+(${numberPattern})\\s*\\$?\\s+(${numberPattern})`,
       "i"
     );
     const match = joinedText.match(regex);
@@ -500,14 +500,14 @@
     if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
       rawMatches.netAssetsBeginningOfYear = findFinancialStatementPair(
         prepared.joinedText,
-        "Net assets available(?: for plan benefits)?",
+        "Net assets available(?: for (?:plan )?benefits)?",
         1
       ) || rawMatches.netAssetsBeginningOfYear;
     }
     if (!rawMatches.netAssetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsEndOfYear)) {
       rawMatches.netAssetsEndOfYear = findFinancialStatementPair(
         prepared.joinedText,
-        "Net assets available(?: for plan benefits)?",
+        "Net assets available(?: for (?:plan )?benefits)?",
         0
       ) || rawMatches.netAssetsEndOfYear;
     }
