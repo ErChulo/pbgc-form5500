@@ -407,6 +407,7 @@
     const mapped = fieldMapperApi && typeof fieldMapperApi.mapDocumentFields === "function"
       ? fieldMapperApi.mapDocumentFields({
           documentText: pdfData.documentText,
+          pages: pdfData.pages || [],
           schemaRegistry,
           normalizeFieldValue,
           context: initialContext

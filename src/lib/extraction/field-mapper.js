@@ -210,6 +210,60 @@
     };
   }
 
+  function computeFinancialStatementAssetTotal(pageText, pairIndex, sourcePage) {
+    const statementMatch = sanitizeExtractedText(pageText).match(
+      /statements? of net assets available for (?:plan )?benefits[^]{0,800}?\bassets\b\s+([^]*?)net assets available for (?:plan )?benefits\s+[-(]?(?:\$)?\d[\d,]*(?:\.\d+)?\)?\s*\$?\s+[-(]?(?:\$)?\d[\d,]*(?:\.\d+)?\)?/i
+    );
+    if (!statementMatch || !statementMatch[1]) {
+      return null;
+    }
+
+    const assetSection = sanitizeExtractedText(statementMatch[1]);
+    const rowRegex = /([A-Za-z][A-Za-z ,.'&()/-]*?)\s+(\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?)\s*\$?\s+(\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?)(?!\s*%)/g;
+    let match = rowRegex.exec(assetSection);
+    let total = 0;
+    let matchedRows = 0;
+    while (match) {
+      const label = sanitizeExtractedText(match[1]);
+      if (label && !/^(?:page|see notes|december|june|april|\d{4})$/i.test(label)) {
+        const rawValue = sanitizeExtractedText(match[pairIndex + 2]);
+        const normalizedValue = rawValue
+          .replace(/\$/g, "")
+          .replace(/,/g, "")
+          .replace(/\s+/g, "");
+        const negative = /^\(.*\)$/.test(normalizedValue) || normalizedValue.startsWith("-");
+        const digits = normalizedValue.replace(/[()\-]/g, "");
+        if (/^\d+(?:\.\d+)?$/.test(digits)) {
+          total += negative ? -Number(digits) : Number(digits);
+          matchedRows += 1;
+        }
+      }
+      match = rowRegex.exec(assetSection);
+    }
+
+    if (!matchedRows) {
+      return null;
+    }
+
+    return {
+      value: String(total),
+      sourceLabel: "financial-statements-assets",
+      sourcePage: sourcePage == null ? null : sourcePage,
+      excerpt: assetSection.slice(0, 500)
+    };
+  }
+
+  function findFinancialStatementAssetTotal(joinedText, pages, pairIndex) {
+    const pageList = Array.isArray(pages) ? pages : [];
+    for (const page of pageList) {
+      const matched = computeFinancialStatementAssetTotal(page && page.text ? page.text : "", pairIndex, page && page.pageNumber);
+      if (matched) {
+        return matched;
+      }
+    }
+    return computeFinancialStatementAssetTotal(joinedText, pairIndex, null);
+  }
+
   function findAccountantOpinion(joinedText) {
     const text = sanitizeExtractedText(joinedText);
     if (!text) {
@@ -404,6 +458,7 @@
     }
 
     const prepared = prepareText(source.documentText);
+    const pages = Array.isArray(source.pages) ? source.pages : [];
     const schemaRegistry = source.schemaRegistry || [];
     const detectedSchedules = new Set(
       ((source.context && Array.isArray(source.context.schedules) ? source.context.schedules : []) || [])
@@ -516,6 +571,12 @@
         "Net assets available(?: for (?:plan )?benefits)?",
         0
       ) || rawMatches.netAssetsEndOfYear;
+    }
+    if (!rawMatches.assetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.assetsBeginningOfYear)) {
+      rawMatches.assetsBeginningOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 1) || rawMatches.assetsBeginningOfYear;
+    }
+    if (!rawMatches.assetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.assetsEndOfYear)) {
+      rawMatches.assetsEndOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 0) || rawMatches.assetsEndOfYear;
     }
 
     Object.keys(rawMatches).forEach((fieldId) => {
