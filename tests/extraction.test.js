@@ -619,6 +619,64 @@ test("attachment-derived financial statement and actuarial values map into the e
   assert.equal(extracted.fields.actuarialPresentValueOfAccumulatedPlanBenefits.valueNumber, "4500000");
 });
 
+test("financial statement row extractors ignore table-of-contents page numbers and year headers", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 07/01/2021 and ending 06/30/2022",
+    "Name of plan",
+    "Northwind Pension Plan",
+    "Plan number 010",
+    "Employer identification number 98-7654321",
+    "Schedule H",
+    "TABLE OF CONTENTS Page Independent Auditor's Report 1 Statements of Changes in Net Assets Available for Plan Benefits 6",
+    "STATEMENTS OF CHANGES IN NET ASSETS AVAILABLE FOR PLAN BENEFITS Year ended June 30, 2022 and 2021 2022 2021",
+    "Employer contributions 250,000 225,000",
+    "Benefits paid to participants 175,000 165,000",
+    "Interest and dividend income 100,000 90,000"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1007b",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "northwind-attachments-noise.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.employerContributions.valueNumber, "250000");
+  assert.equal(extracted.fields.benefitsPaid.valueNumber, "175000");
+  assert.equal(extracted.fields.investmentIncome.valueNumber, "100000");
+});
+
+test("plan effective date is not inferred from summary footer dates without an explicit label", () => {
+  const documentText = [
+    "Form 5500 (2024) v. 240311 01/01/2021 12/31/2021 X X X X THE COLLEGE OF SAINT ROSE 403(B) RETIREMENT PLAN 002 10/02/1954 14-1338371 THE COLLEGE OF SAINT ROSE 518-454-5138 432 WESTERN AVENUE ALBANY, NY 12203 611000 Filed with authorized/valid electronic signature."
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1007c",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "summary-footer-no-effective-label.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.planEffectiveDate.parseStatus, "missing");
+  assert.equal(extracted.planNumber.valueCode, "002");
+});
+
 test("schedule a c and g boolean fields map into the expanded scaffold", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",

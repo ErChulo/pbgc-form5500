@@ -186,8 +186,9 @@
     return null;
   }
 
-  function findLinePairValue(lines, aliases, pairIndex, sourceLabel, excludePattern) {
+  function findLinePairValue(lines, aliases, pairIndex, sourceLabel, excludePattern, minDigits) {
     const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?(?![A-Za-z])/g;
+    const minimumDigits = typeof minDigits === "number" ? minDigits : 1;
     for (const line of lines) {
       if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
         continue;
@@ -196,9 +197,10 @@
         continue;
       }
       const matches = line.match(numberPattern);
-      if (matches && matches[pairIndex]) {
+      const value = matches && matches[pairIndex] ? sanitizeExtractedText(matches[pairIndex]) : null;
+      if (value && value.replace(/\D/g, "").length >= minimumDigits) {
         return {
-          value: sanitizeExtractedText(matches[pairIndex]),
+          value,
           sourceLabel: sourceLabel || aliases[0],
           sourcePage: null,
           excerpt: sanitizeExtractedText(line).slice(0, 500)
@@ -448,7 +450,6 @@
       planYearEndDate: { value: footer.endDate, sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       planName: { value: sanitizeExtractedText(match[1]), sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       planNumber: { value: match[2], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
-      planEffectiveDate: { value: match[3], sourceLabel: "summary-footer", sourcePage: 1, excerpt: footer.excerpt },
       sponsorEmployerIdentificationNumber: {
         value: match[4],
         sourceLabel: "summary-footer",
@@ -524,8 +525,12 @@
 
   function parseFilingKind(flattenedText) {
     const text = flattenedText.toLowerCase();
-    const amended = text.includes("amended return") || text.includes("amended annual return");
-    const final = text.includes("final return") || text.includes("final filing");
+    const amended =
+      /\bamended\s+(?:annual\s+)?return\/report\b/.test(text) ||
+      /\bamended\s+return\/report\b/.test(text);
+    const final =
+      /\bfinal\s+return\/report\b/.test(text) ||
+      /\bfinal\s+annual\s+return\/report\b/.test(text);
     if (amended && final) {
       return "amended final";
     }
@@ -604,7 +609,6 @@
         : null);
     rawMatches.planName = summaryMatches.planName || findTextValue(prepared.lines, ["name of plan"]);
     rawMatches.planEffectiveDate =
-      summaryMatches.planEffectiveDate ||
       findSingleValue(prepared.joinedText, ["effective date of plan", "date effective"], "\\d{1,2}[/-]\\d{1,2}[/-]\\d{4}");
     rawMatches.planNumber =
       summaryMatches.planNumber ||
@@ -719,26 +723,70 @@
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
       findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
     rawMatches.benefitsPaid =
-      findLinePairValue(prepared.lines, ["Benefits? paid(?: to participants)?"], 0, "financial-statements") ||
+      findLinePairValue(
+        prepared.lines,
+        ["Benefits? paid(?: to participants)?"],
+        0,
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
+      ) ||
       findFinancialStatementRowPair(prepared.joinedText, "Benefits? paid(?: to participants)?", 0) ||
-      findLinePairValue(prepared.lines, ["Benefits? paid(?: to participants)?"], 1, "financial-statements") ||
+      findLinePairValue(
+        prepared.lines,
+        ["Benefits? paid(?: to participants)?"],
+        1,
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
+      ) ||
       findFinancialStatementRowPair(prepared.joinedText, "Benefits? paid(?: to participants)?", 1);
     rawMatches.administrativeExpenses =
-      findLinePairValue(prepared.lines, ["Administrative expenses"], 0, "financial-statements") ||
+      findLinePairValue(
+        prepared.lines,
+        ["Administrative expenses"],
+        0,
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
+      ) ||
       findFinancialStatementRowPair(prepared.joinedText, "Administrative expenses", 0) ||
-      findLinePairValue(prepared.lines, ["Administrative expenses"], 1, "financial-statements") ||
+      findLinePairValue(
+        prepared.lines,
+        ["Administrative expenses"],
+        1,
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
+      ) ||
       findFinancialStatementRowPair(prepared.joinedText, "Administrative expenses", 1);
     rawMatches.employerContributions =
-      findLinePairValue(prepared.lines, ["Employer contributions"], 0, "financial-statements") ||
+      findLinePairValue(
+        prepared.lines,
+        ["Employer contributions"],
+        0,
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
+      ) ||
       findFinancialStatementRowPair(prepared.joinedText, "Employer contributions", 0) ||
-      findLinePairValue(prepared.lines, ["Employer contributions"], 1, "financial-statements") ||
+      findLinePairValue(
+        prepared.lines,
+        ["Employer contributions"],
+        1,
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
+      ) ||
       findFinancialStatementRowPair(prepared.joinedText, "Employer contributions", 1);
     rawMatches.investmentIncome =
       findLinePairValue(
         prepared.lines,
         ["Net appreciation \\(depreciation\\) in fair value of investments", "Interest and dividend income", "Investment income"],
         0,
-        "financial-statements"
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
       ) ||
       findFinancialStatementRowPair(
         prepared.joinedText,
@@ -750,7 +798,9 @@
         prepared.lines,
         ["Net appreciation \\(depreciation\\) in fair value of investments", "Interest and dividend income", "Investment income"],
         1,
-        "financial-statements"
+        "financial-statements",
+        /table of contents|page\s+\d+|form 5500|\b\d{4}\s+\d{4}\b/i,
+        4
       ) ||
       findFinancialStatementRowPair(
         prepared.joinedText,

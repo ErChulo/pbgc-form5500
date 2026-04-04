@@ -315,9 +315,25 @@
     return "missing";
   }
 
+  function formatPlanNumber(value) {
+    const text = toText(value);
+    if (/^\d{1,3}$/.test(text)) {
+      return text.padStart(3, "0");
+    }
+    return text;
+  }
+
+  function getFieldDisplayText(field, fieldId) {
+    const text = getFieldText(field);
+    if (fieldId === "planNumber") {
+      return formatPlanNumber(text);
+    }
+    return text;
+  }
+
   function serializeFieldForExport(record, fieldId) {
     const field = record && record.fields ? record.fields[fieldId] : null;
-    const text = getFieldText(field);
+    const text = getFieldDisplayText(field, fieldId);
     const state = getEffectiveFieldState(record, fieldId);
     if (state === "parsed") {
       return { text, state };
@@ -635,11 +651,11 @@
 
     const rows = records.map((record) => {
       const row = {
-        planName: getFieldText(record.planName),
-        planNumber: getFieldText(record.planNumber),
-        sponsorEmployerIdentificationNumber: getFieldText(record.sponsorEmployerIdentificationNumber),
-        planYearBeginDate: getFieldText(record.planYearBeginDate),
-        planYearEndDate: getFieldText(record.planYearEndDate),
+        planName: getFieldDisplayText(record.planName, "planName"),
+        planNumber: getFieldDisplayText(record.planNumber, "planNumber"),
+        sponsorEmployerIdentificationNumber: getFieldDisplayText(record.sponsorEmployerIdentificationNumber, "sponsorEmployerIdentificationNumber"),
+        planYearBeginDate: getFieldDisplayText(record.planYearBeginDate, "planYearBeginDate"),
+        planYearEndDate: getFieldDisplayText(record.planYearEndDate, "planYearEndDate"),
         filingKind: getFieldText(record.filingKind),
         receivedTimestamp: getFieldText(record.receivedTimestamp),
         extractionQuality: `${record.metrics.parsedFieldCount}/${record.metrics.expectedFieldCount}`

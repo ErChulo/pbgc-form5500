@@ -240,6 +240,24 @@ test("all-years aggregation preserves unresolved export states for expanded fiel
   assert.equal(aggregate.rows[0].__cellMeta.netAssetsEndOfYear.state, "masked");
 });
 
+test("all-years aggregation preserves zero-padded plan numbers and ISO dates", () => {
+  const record = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan H",
+      planNumber: "2",
+      sponsorEmployerIdentificationNumber: "888888888",
+      planYearBeginDate: "1/1/2021",
+      planYearEndDate: "12/31/2021"
+    },
+    { ingestId: "ing-9", ingestionTimestamp: "2024-02-01T00:00:00Z", schemaRegistry: core.getDefaultSchemaRegistry() }
+  );
+
+  const aggregate = core.aggregateAllYears([record], core.getDefaultSchemaRegistry());
+  assert.equal(aggregate.rows[0].planNumber, "002");
+  assert.equal(aggregate.rows[0].planYearBeginDate, "2021-01-01");
+  assert.equal(aggregate.rows[0].planYearEndDate, "2021-12-31");
+});
+
 test("validation corpus summary includes conflict and attachment-derived counts", () => {
   const record = core.buildExtractedFromCsvRow(
     {
