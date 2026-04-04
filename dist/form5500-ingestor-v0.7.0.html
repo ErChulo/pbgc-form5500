@@ -274,6 +274,35 @@ td {
   text-align: left;
 }
 
+td.cell-state-masked,
+td.cell-state-failed,
+td.cell-state-missing,
+td.cell-state-conflicting,
+td.cell-state-not-applicable {
+  font-family: var(--mono);
+}
+
+td.cell-state-masked {
+  background: rgba(159, 47, 25, 0.08);
+}
+
+td.cell-state-conflicting {
+  background: rgba(255, 196, 0, 0.18);
+}
+
+td.cell-state-failed {
+  background: rgba(138, 66, 0, 0.12);
+}
+
+td.cell-state-not-applicable {
+  color: var(--muted);
+}
+
+td.cell-state-missing {
+  color: var(--muted);
+  font-style: italic;
+}
+
 th {
   position: sticky;
   top: 0;
@@ -1015,8 +1044,9 @@ window.__FORM5500_VENDOR__ = {
     };
   }
 
-  function summarizeReviewState(exceptions) {
+  function summarizeReviewState(exceptions, evidence) {
     const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const evidenceList = Array.isArray(evidence) ? evidence : [];
     const counts = {
       exceptionCount: exceptionList.length,
       maskedCount: 0,
@@ -1048,6 +1078,14 @@ window.__FORM5500_VENDOR__ = {
         counts.missingCount += 1;
       }
     });
+
+    if (!counts.attachmentDerivedCount) {
+      counts.attachmentDerivedCount = evidenceList.filter((entry) =>
+        entry &&
+        entry.status === "parsed" &&
+        ["financial-statement", "actuarial-attachment", "other-attachment"].includes(entry.sourceType)
+      ).length;
+    }
 
     return counts;
   }
@@ -1360,10 +1398,13 @@ window.__FORM5500_VENDOR__ = {
     return null;
   }
 
-  function findLinePairValue(lines, aliases, pairIndex, sourceLabel) {
+  function findLinePairValue(lines, aliases, pairIndex, sourceLabel, excludePattern) {
     const numberPattern = /\(?-?(?:\$)?\d[\d,]*(?:\.\d+)?\)?(?![A-Za-z])/g;
     for (const line of lines) {
       if (!aliases.some((alias) => new RegExp(alias, "i").test(line))) {
+        continue;
+      }
+      if (excludePattern && excludePattern.test(line)) {
         continue;
       }
       const matches = line.match(numberPattern);
@@ -1727,6 +1768,7 @@ window.__FORM5500_VENDOR__ = {
     const exceptions = [];
     const rawValues = {};
     const rawMatches = {};
+    const conflicts = [];
 
     function inferSourceType(definition, matchDetails) {
       const sourceLabel = String(matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : "").toLowerCase();
@@ -1743,6 +1785,23 @@ window.__FORM5500_VENDOR__ = {
         return "schedule";
       }
       return "main-form";
+    }
+
+    function registerConflict(fieldId, preferredMatch, alternateMatch) {
+      if (!preferredMatch || !alternateMatch) {
+        return;
+      }
+      if (isLikelyPlaceholderMatch(preferredMatch) || isLikelyPlaceholderMatch(alternateMatch)) {
+        return;
+      }
+      if (sanitizeExtractedText(preferredMatch.value) === sanitizeExtractedText(alternateMatch.value)) {
+        return;
+      }
+      conflicts.push({
+        fieldId,
+        preferredMatch,
+        alternateMatch
+      });
     }
 
     const summaryMatches = parseBasicPlanInfoFromSummary(prepared.joinedText);
@@ -1844,24 +1903,28 @@ window.__FORM5500_VENDOR__ = {
       { labelPattern: "Total number of participants", lineCode: "6g" },
       { labelPattern: "Total\\. Add lines 6e and 6f", lineCode: "6g" }
     ]) || findSingleValue(prepared.joinedText, ["total number of participants"], "\\d[\\d,]*");
-    rawMatches.assetsBeginningOfYear =
+    const scheduleAssetsBeginningOfYear =
       findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 0) ||
       findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 0);
-    rawMatches.assetsEndOfYear =
+    const scheduleAssetsEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1f", "Total assets", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1f", ["Total assets"], 1);
+    rawMatches.assetsBeginningOfYear = scheduleAssetsBeginningOfYear;
+    rawMatches.assetsEndOfYear = scheduleAssetsEndOfYear;
     rawMatches.liabilitiesBeginningOfYear =
       findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 0) ||
       findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 0);
     rawMatches.liabilitiesEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1k", "Total liabilities", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1k", ["Total liabilities"], 1);
-    rawMatches.netAssetsBeginningOfYear =
+    const scheduleNetAssetsBeginningOfYear =
       findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 0) ||
       findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 0);
-    rawMatches.netAssetsEndOfYear =
+    const scheduleNetAssetsEndOfYear =
       findScheduleLinePair(prepared.joinedText, "1l", "Net assets", 1) ||
       findScheduleLinePairInLines(prepared.lines, "1l", ["Net assets"], 1);
+    rawMatches.netAssetsBeginningOfYear = scheduleNetAssetsBeginningOfYear;
+    rawMatches.netAssetsEndOfYear = scheduleNetAssetsEndOfYear;
     rawMatches.scheduleHAccountantOpinion =
       findAccountantOpinion(prepared.joinedText) || findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
@@ -1941,25 +2004,51 @@ window.__FORM5500_VENDOR__ = {
       findTrailingLineCodeValue(prepared.joinedText, "Inactive participants receiving benefits", "14a", "\\d[\\d,]*") ||
       findSingleValue(prepared.joinedText, ["inactive participants receiving benefits"], "\\d[\\d,]*");
 
-    if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
-      rawMatches.netAssetsBeginningOfYear = findFinancialStatementPair(
+    const statementNetAssetsBeginningOfYear =
+      findLinePairValue(
+        prepared.lines,
+        ["Net assets available(?: for (?:plan )?benefits)?"],
+        1,
+        "financial-statements",
+        /statements?\s+of\s+net\s+assets|year ended|december\s+\d{1,2},?\s+\d{4}|june\s+\d{1,2},?\s+\d{4}/i
+      ) ||
+      findFinancialStatementPair(
         prepared.joinedText,
         "Net assets available(?: for (?:plan )?benefits)?",
         1
-      ) || rawMatches.netAssetsBeginningOfYear;
-    }
-    if (!rawMatches.netAssetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsEndOfYear)) {
-      rawMatches.netAssetsEndOfYear = findFinancialStatementPair(
+      );
+    const statementNetAssetsEndOfYear =
+      findLinePairValue(
+        prepared.lines,
+        ["Net assets available(?: for (?:plan )?benefits)?"],
+        0,
+        "financial-statements",
+        /statements?\s+of\s+net\s+assets|year ended|december\s+\d{1,2},?\s+\d{4}|june\s+\d{1,2},?\s+\d{4}/i
+      ) ||
+      findFinancialStatementPair(
         prepared.joinedText,
         "Net assets available(?: for (?:plan )?benefits)?",
         0
-      ) || rawMatches.netAssetsEndOfYear;
+      );
+    const statementAssetsBeginningOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 1);
+    const statementAssetsEndOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 0);
+
+    registerConflict("netAssetsBeginningOfYear", scheduleNetAssetsBeginningOfYear, statementNetAssetsBeginningOfYear);
+    registerConflict("netAssetsEndOfYear", scheduleNetAssetsEndOfYear, statementNetAssetsEndOfYear);
+    registerConflict("assetsBeginningOfYear", scheduleAssetsBeginningOfYear, statementAssetsBeginningOfYear);
+    registerConflict("assetsEndOfYear", scheduleAssetsEndOfYear, statementAssetsEndOfYear);
+
+    if (!rawMatches.netAssetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsBeginningOfYear)) {
+      rawMatches.netAssetsBeginningOfYear = statementNetAssetsBeginningOfYear || rawMatches.netAssetsBeginningOfYear;
+    }
+    if (!rawMatches.netAssetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.netAssetsEndOfYear)) {
+      rawMatches.netAssetsEndOfYear = statementNetAssetsEndOfYear || rawMatches.netAssetsEndOfYear;
     }
     if (!rawMatches.assetsBeginningOfYear || isLikelyPlaceholderMatch(rawMatches.assetsBeginningOfYear)) {
-      rawMatches.assetsBeginningOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 1) || rawMatches.assetsBeginningOfYear;
+      rawMatches.assetsBeginningOfYear = statementAssetsBeginningOfYear || rawMatches.assetsBeginningOfYear;
     }
     if (!rawMatches.assetsEndOfYear || isLikelyPlaceholderMatch(rawMatches.assetsEndOfYear)) {
-      rawMatches.assetsEndOfYear = findFinancialStatementAssetTotal(prepared.joinedText, pages, 0) || rawMatches.assetsEndOfYear;
+      rawMatches.assetsEndOfYear = statementAssetsEndOfYear || rawMatches.assetsEndOfYear;
     }
 
     Object.keys(rawMatches).forEach((fieldId) => {
@@ -1995,6 +2084,25 @@ window.__FORM5500_VENDOR__ = {
           sourceLabel: matchDetails && matchDetails.sourceLabel ? matchDetails.sourceLabel : definition.name,
           excerpt: matchDetails && matchDetails.excerpt ? matchDetails.excerpt : rawValue
         });
+        conflicts
+          .filter((entry) => entry.fieldId === definition.fieldId)
+          .forEach((entry) => {
+            evidence.push({
+              fieldId: definition.fieldId,
+              status: "conflicting",
+              sourceType: inferSourceType(definition, entry.alternateMatch),
+              sourcePage: entry.alternateMatch && entry.alternateMatch.sourcePage != null ? entry.alternateMatch.sourcePage : null,
+              sourceLabel: entry.alternateMatch && entry.alternateMatch.sourceLabel ? entry.alternateMatch.sourceLabel : definition.name,
+              excerpt: entry.alternateMatch && entry.alternateMatch.excerpt ? entry.alternateMatch.excerpt : entry.alternateMatch.value
+            });
+            exceptions.push({
+              fieldId: definition.fieldId,
+              code: "conflict",
+              message: "Multiple non-placeholder sources disagree for this field.",
+              sourcePage: entry.alternateMatch && entry.alternateMatch.sourcePage != null ? entry.alternateMatch.sourcePage : null,
+              sourceLabel: entry.alternateMatch && entry.alternateMatch.sourceLabel ? entry.alternateMatch.sourceLabel : definition.name
+            });
+          });
       } else {
         const maskedNumericEvidence = isNumericType(definition.dataType) && matchDetails && isLikelyPlaceholderMatch(matchDetails);
         exceptions.push({
@@ -2436,6 +2544,53 @@ window.__FORM5500_VENDOR__ = {
     return field.rawText || "";
   }
 
+  function getEffectiveFieldState(record, fieldId) {
+    if (!record || !record.fields || !record.fields[fieldId]) {
+      return "missing";
+    }
+    const field = record.fields[fieldId];
+    const exceptions = record.extraction && Array.isArray(record.extraction.exceptions) ? record.extraction.exceptions : [];
+    const fieldExceptions = exceptions.filter((entry) => entry && entry.fieldId === fieldId);
+    if (fieldExceptions.some((entry) => entry.code === "conflict")) {
+      return "conflicting";
+    }
+    if (fieldExceptions.some((entry) => entry.code === "masked-numeric-evidence")) {
+      return "masked";
+    }
+    if (fieldExceptions.some((entry) => entry.code === "schedule-not-present")) {
+      return "not-applicable";
+    }
+    if (field.parseStatus === "failed" || fieldExceptions.some((entry) => entry.code === "parse-failed")) {
+      return "failed";
+    }
+    if (field.parseStatus === "parsed") {
+      return "parsed";
+    }
+    return "missing";
+  }
+
+  function serializeFieldForExport(record, fieldId) {
+    const field = record && record.fields ? record.fields[fieldId] : null;
+    const text = getFieldText(field);
+    const state = getEffectiveFieldState(record, fieldId);
+    if (state === "parsed") {
+      return { text, state };
+    }
+    if (state === "conflicting") {
+      return { text: text ? `${text} [conflict]` : "[conflict]", state };
+    }
+    if (state === "masked") {
+      return { text: "[masked]", state };
+    }
+    if (state === "failed") {
+      return { text: text ? `${text} [failed]` : "[failed]", state };
+    }
+    if (state === "not-applicable") {
+      return { text: "[n/a]", state };
+    }
+    return { text: "[missing]", state };
+  }
+
   function createExtractedRecord(input) {
     const source = input || {};
     const schemaRegistry = source.schemaRegistry || getDefaultSchemaRegistry();
@@ -2625,7 +2780,7 @@ window.__FORM5500_VENDOR__ = {
     }
 
     if (qualityApi && typeof qualityApi.summarizeReviewState === "function") {
-      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions);
+      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions, extracted.extraction.evidence);
       extracted.metrics = {
         ...extracted.metrics,
         ...reviewState
@@ -2743,10 +2898,20 @@ window.__FORM5500_VENDOR__ = {
         receivedTimestamp: getFieldText(record.receivedTimestamp),
         extractionQuality: `${record.metrics.parsedFieldCount}/${record.metrics.expectedFieldCount}`
       };
+      const cellMeta = {};
 
       additionalColumns.forEach((column) => {
-        row[column.key] = getFieldText(record.fields[column.fieldId]);
+        const serialized = serializeFieldForExport(record, column.fieldId);
+        row[column.key] = serialized.text;
+        cellMeta[column.key] = { state: serialized.state };
       });
+
+      row.__cellMeta = cellMeta;
+      row.__detectedSchedules = Array.isArray(record.detectedSchedules) ? [...record.detectedSchedules] : [];
+      row.__reviewSummary = {
+        conflictCount: Number(record.metrics.conflictCount || 0),
+        attachmentDerivedCount: Number(record.metrics.attachmentDerivedCount || 0)
+      };
 
       return row;
     });
@@ -2764,6 +2929,8 @@ window.__FORM5500_VENDOR__ = {
       validatedNumericFieldCount: 0,
       targetedNumericFieldCount: 0,
       maskedNumericFieldCount: 0,
+      conflictCount: 0,
+      attachmentDerivedCount: 0,
       failedNumericFieldCount: 0,
       unresolvedNumericFieldCount: 0,
       notApplicableNumericFieldCount: 0
@@ -2783,6 +2950,8 @@ window.__FORM5500_VENDOR__ = {
       totals.validatedNumericFieldCount += Number(metrics.validatedNumericFieldCount || 0);
       totals.targetedNumericFieldCount += Number(metrics.targetedNumericFieldCount || 0);
       totals.maskedNumericFieldCount += Number(metrics.maskedNumericFieldCount || 0);
+      totals.conflictCount += Number(metrics.conflictCount || 0);
+      totals.attachmentDerivedCount += Number(metrics.attachmentDerivedCount || 0);
       totals.failedNumericFieldCount += Number(metrics.failedNumericFieldCount || 0);
       totals.unresolvedNumericFieldCount += Number(metrics.unresolvedNumericFieldCount || 0);
       totals.notApplicableNumericFieldCount += Number(metrics.notApplicableNumericFieldCount || 0);
@@ -2928,7 +3097,8 @@ window.__FORM5500_VENDOR__ = {
     parseCsv,
     quoteCsvCell,
     summarizeValidationCorpus,
-    toCsv
+    toCsv,
+    getEffectiveFieldState
   };
 });
 
@@ -3066,14 +3236,17 @@ window.__FORM5500_VENDOR__ = {
       parsedFieldCount: extracted.metrics.parsedFieldCount,
       expectedFieldCount: extracted.metrics.expectedFieldCount,
       exceptionCount: exceptions.length,
-      unresolvedFieldIds: exceptions.slice(0, 4).map((entry) => entry.fieldId),
+      unresolvedFieldIds: Array.from(new Set(exceptions.map((entry) => entry.fieldId))).slice(0, 4),
       filingNumericSufficiency: extracted.metrics.filingNumericSufficiency || "insufficient",
       validatedNumericFieldCount: extracted.metrics.validatedNumericFieldCount || 0,
       targetedNumericFieldCount: extracted.metrics.targetedNumericFieldCount || 0,
       maskedNumericFieldCount: extracted.metrics.maskedNumericFieldCount || 0,
+      conflictCount: extracted.metrics.conflictCount || 0,
+      attachmentDerivedCount: extracted.metrics.attachmentDerivedCount || 0,
       missingCount: extracted.metrics.missingCount || 0,
       failedCount: extracted.metrics.failedCount || 0,
-      notApplicableCount: extracted.metrics.notApplicableCount || 0
+      notApplicableCount: extracted.metrics.notApplicableCount || 0,
+      detectedSchedules: Array.isArray(extracted.detectedSchedules) ? extracted.detectedSchedules : []
     };
   }
 
@@ -3084,6 +3257,12 @@ window.__FORM5500_VENDOR__ = {
     const parts = [];
     if (summary.maskedNumericFieldCount) {
       parts.push(`${summary.maskedNumericFieldCount} masked`);
+    }
+    if (summary.conflictCount) {
+      parts.push(`${summary.conflictCount} conflicts`);
+    }
+    if (summary.attachmentDerivedCount) {
+      parts.push(`${summary.attachmentDerivedCount} attachment-derived`);
     }
     if (summary.failedCount) {
       parts.push(`${summary.failedCount} failed`);
@@ -3391,6 +3570,10 @@ window.__FORM5500_VENDOR__ = {
                   }</div>`
                 : ""
             }${
+              item.extractionSummary.detectedSchedules.length
+                ? `<div class="muted">Schedules: ${sanitizeHtml(item.extractionSummary.detectedSchedules.join(", "))}</div>`
+                : ""
+            }${
               describeExtractionSummary(item.extractionSummary)
                 ? `<div class="muted">Review state: ${sanitizeHtml(describeExtractionSummary(item.extractionSummary))}</div>`
                 : ""
@@ -3453,6 +3636,12 @@ window.__FORM5500_VENDOR__ = {
           corpusSummary.maskedNumericFieldCount
             ? `<span class="pill">masked: ${corpusSummary.maskedNumericFieldCount}</span>`
             : "",
+          corpusSummary.conflictCount
+            ? `<span class="pill">conflicts: ${corpusSummary.conflictCount}</span>`
+            : "",
+          corpusSummary.attachmentDerivedCount
+            ? `<span class="pill">attachment-derived: ${corpusSummary.attachmentDerivedCount}</span>`
+            : "",
           corpusSummary.failedNumericFieldCount
             ? `<span class="pill">failed: ${corpusSummary.failedNumericFieldCount}</span>`
             : "",
@@ -3473,7 +3662,12 @@ window.__FORM5500_VENDOR__ = {
         .map(
           (row) =>
             `<tr>${visibleColumns
-              .map((column) => `<td>${sanitizeHtml(row[column.key] || "")}</td>`)
+              .map((column) => {
+                const value = row[column.key] || "";
+                const meta = row.__cellMeta && row.__cellMeta[column.key] ? row.__cellMeta[column.key] : null;
+                const stateClass = meta && meta.state ? ` cell-state-${meta.state}` : "";
+                return `<td class="${stateClass.trim()}">${sanitizeHtml(value)}</td>`;
+              })
               .join("")}</tr>`
         )
         .join("");

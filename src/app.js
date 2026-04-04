@@ -531,6 +531,12 @@
           corpusSummary.maskedNumericFieldCount
             ? `<span class="pill">masked: ${corpusSummary.maskedNumericFieldCount}</span>`
             : "",
+          corpusSummary.conflictCount
+            ? `<span class="pill">conflicts: ${corpusSummary.conflictCount}</span>`
+            : "",
+          corpusSummary.attachmentDerivedCount
+            ? `<span class="pill">attachment-derived: ${corpusSummary.attachmentDerivedCount}</span>`
+            : "",
           corpusSummary.failedNumericFieldCount
             ? `<span class="pill">failed: ${corpusSummary.failedNumericFieldCount}</span>`
             : "",
@@ -551,7 +557,12 @@
         .map(
           (row) =>
             `<tr>${visibleColumns
-              .map((column) => `<td>${sanitizeHtml(row[column.key] || "")}</td>`)
+              .map((column) => {
+                const value = row[column.key] || "";
+                const meta = row.__cellMeta && row.__cellMeta[column.key] ? row.__cellMeta[column.key] : null;
+                const stateClass = meta && meta.state ? ` cell-state-${meta.state}` : "";
+                return `<td class="${stateClass.trim()}">${sanitizeHtml(value)}</td>`;
+              })
               .join("")}</tr>`
         )
         .join("");

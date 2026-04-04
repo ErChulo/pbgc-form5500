@@ -290,6 +290,53 @@
     return field.rawText || "";
   }
 
+  function getEffectiveFieldState(record, fieldId) {
+    if (!record || !record.fields || !record.fields[fieldId]) {
+      return "missing";
+    }
+    const field = record.fields[fieldId];
+    const exceptions = record.extraction && Array.isArray(record.extraction.exceptions) ? record.extraction.exceptions : [];
+    const fieldExceptions = exceptions.filter((entry) => entry && entry.fieldId === fieldId);
+    if (fieldExceptions.some((entry) => entry.code === "conflict")) {
+      return "conflicting";
+    }
+    if (fieldExceptions.some((entry) => entry.code === "masked-numeric-evidence")) {
+      return "masked";
+    }
+    if (fieldExceptions.some((entry) => entry.code === "schedule-not-present")) {
+      return "not-applicable";
+    }
+    if (field.parseStatus === "failed" || fieldExceptions.some((entry) => entry.code === "parse-failed")) {
+      return "failed";
+    }
+    if (field.parseStatus === "parsed") {
+      return "parsed";
+    }
+    return "missing";
+  }
+
+  function serializeFieldForExport(record, fieldId) {
+    const field = record && record.fields ? record.fields[fieldId] : null;
+    const text = getFieldText(field);
+    const state = getEffectiveFieldState(record, fieldId);
+    if (state === "parsed") {
+      return { text, state };
+    }
+    if (state === "conflicting") {
+      return { text: text ? `${text} [conflict]` : "[conflict]", state };
+    }
+    if (state === "masked") {
+      return { text: "[masked]", state };
+    }
+    if (state === "failed") {
+      return { text: text ? `${text} [failed]` : "[failed]", state };
+    }
+    if (state === "not-applicable") {
+      return { text: "[n/a]", state };
+    }
+    return { text: "[missing]", state };
+  }
+
   function createExtractedRecord(input) {
     const source = input || {};
     const schemaRegistry = source.schemaRegistry || getDefaultSchemaRegistry();
@@ -479,7 +526,7 @@
     }
 
     if (qualityApi && typeof qualityApi.summarizeReviewState === "function") {
-      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions);
+      const reviewState = qualityApi.summarizeReviewState(extracted.extraction.exceptions, extracted.extraction.evidence);
       extracted.metrics = {
         ...extracted.metrics,
         ...reviewState
@@ -597,10 +644,20 @@
         receivedTimestamp: getFieldText(record.receivedTimestamp),
         extractionQuality: `${record.metrics.parsedFieldCount}/${record.metrics.expectedFieldCount}`
       };
+      const cellMeta = {};
 
       additionalColumns.forEach((column) => {
-        row[column.key] = getFieldText(record.fields[column.fieldId]);
+        const serialized = serializeFieldForExport(record, column.fieldId);
+        row[column.key] = serialized.text;
+        cellMeta[column.key] = { state: serialized.state };
       });
+
+      row.__cellMeta = cellMeta;
+      row.__detectedSchedules = Array.isArray(record.detectedSchedules) ? [...record.detectedSchedules] : [];
+      row.__reviewSummary = {
+        conflictCount: Number(record.metrics.conflictCount || 0),
+        attachmentDerivedCount: Number(record.metrics.attachmentDerivedCount || 0)
+      };
 
       return row;
     });
@@ -618,6 +675,8 @@
       validatedNumericFieldCount: 0,
       targetedNumericFieldCount: 0,
       maskedNumericFieldCount: 0,
+      conflictCount: 0,
+      attachmentDerivedCount: 0,
       failedNumericFieldCount: 0,
       unresolvedNumericFieldCount: 0,
       notApplicableNumericFieldCount: 0
@@ -637,6 +696,8 @@
       totals.validatedNumericFieldCount += Number(metrics.validatedNumericFieldCount || 0);
       totals.targetedNumericFieldCount += Number(metrics.targetedNumericFieldCount || 0);
       totals.maskedNumericFieldCount += Number(metrics.maskedNumericFieldCount || 0);
+      totals.conflictCount += Number(metrics.conflictCount || 0);
+      totals.attachmentDerivedCount += Number(metrics.attachmentDerivedCount || 0);
       totals.failedNumericFieldCount += Number(metrics.failedNumericFieldCount || 0);
       totals.unresolvedNumericFieldCount += Number(metrics.unresolvedNumericFieldCount || 0);
       totals.notApplicableNumericFieldCount += Number(metrics.notApplicableNumericFieldCount || 0);
@@ -782,6 +843,7 @@
     parseCsv,
     quoteCsvCell,
     summarizeValidationCorpus,
-    toCsv
+    toCsv,
+    getEffectiveFieldState
   };
 });

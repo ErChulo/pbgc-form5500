@@ -82,8 +82,9 @@
     };
   }
 
-  function summarizeReviewState(exceptions) {
+  function summarizeReviewState(exceptions, evidence) {
     const exceptionList = Array.isArray(exceptions) ? exceptions : [];
+    const evidenceList = Array.isArray(evidence) ? evidence : [];
     const counts = {
       exceptionCount: exceptionList.length,
       maskedCount: 0,
@@ -115,6 +116,14 @@
         counts.missingCount += 1;
       }
     });
+
+    if (!counts.attachmentDerivedCount) {
+      counts.attachmentDerivedCount = evidenceList.filter((entry) =>
+        entry &&
+        entry.status === "parsed" &&
+        ["financial-statement", "actuarial-attachment", "other-attachment"].includes(entry.sourceType)
+      ).length;
+    }
 
     return counts;
   }

@@ -74,16 +74,16 @@
 
 ### Tests for User Story 2 ⚠️
 
-- [ ] T018 [P] [US2] Add conflict, masked-value, and schedule-not-present regressions in `tests/extraction.test.js`
-- [ ] T019 [P] [US2] Add review-state metric regressions in `tests/core.test.js`
+- [x] T018 [P] [US2] Add conflict, masked-value, and schedule-not-present regressions in `tests/extraction.test.js`
+- [x] T019 [P] [US2] Add review-state metric regressions in `tests/core.test.js`
 
 ### Implementation for User Story 2
 
-- [ ] T020 [US2] Implement field-level conflict detection and candidate preservation in `src/lib/extraction/field-mapper.js`
-- [ ] T021 [US2] Expand exception records and source evidence for attachment-derived and conflicting values in `src/lib/extraction/field-mapper.js`
-- [ ] T022 [US2] Extend record-level review metrics and completion bands in `src/lib/extraction/quality.js`
-- [ ] T023 [US2] Update filing review rendering for expanded field states and evidence in `src/app.js`
-- [ ] T024 [US2] Update supporting review UI layout and state messaging in `src/index.template.html` and `src/styles.css`
+- [x] T020 [US2] Implement field-level conflict detection and candidate preservation in `src/lib/extraction/field-mapper.js`
+- [x] T021 [US2] Expand exception records and source evidence for attachment-derived and conflicting values in `src/lib/extraction/field-mapper.js`
+- [x] T022 [US2] Extend record-level review metrics and completion bands in `src/lib/extraction/quality.js`
+- [x] T023 [US2] Update filing review rendering for expanded field states and evidence in `src/app.js`
+- [x] T024 [US2] Update supporting review UI layout and state messaging in `src/index.template.html` and `src/styles.css`
 
 **Checkpoint**: User Story 2 should allow a user to understand exactly why any unresolved field remains unresolved
 
@@ -97,15 +97,15 @@
 
 ### Tests for User Story 3 ⚠️
 
-- [ ] T025 [P] [US3] Add expanded all-years aggregation regressions in `tests/core.test.js`
+- [x] T025 [P] [US3] Add expanded all-years aggregation regressions in `tests/core.test.js`
 - [ ] T026 [P] [US3] Add duplicate-year deterministic selection regressions for expanded fields in `tests/core.test.js`
 
 ### Implementation for User Story 3
 
-- [ ] T027 [US3] Extend all-years aggregation for the expanded canonical field set in `src/lib/core.js`
-- [ ] T028 [US3] Update all-years export headers, field ordering, and unresolved-state serialization in `src/lib/schema/historical-registry.js` and `src/lib/core.js`
-- [ ] T029 [US3] Update the All years UI to render expanded field groups and review-state summaries in `src/app.js`
-- [ ] T030 [US3] Update All years layout and readability styling for the expanded field set in `src/styles.css`
+- [x] T027 [US3] Extend all-years aggregation for the expanded canonical field set in `src/lib/core.js`
+- [x] T028 [US3] Update all-years export headers, field ordering, and unresolved-state serialization in `src/lib/schema/historical-registry.js` and `src/lib/core.js`
+- [x] T029 [US3] Update the All years UI to render expanded field groups and review-state summaries in `src/app.js`
+- [x] T030 [US3] Update All years layout and readability styling for the expanded field set in `src/styles.css`
 
 **Checkpoint**: User Story 3 should deliver stable, materially complete cross-year outputs for the expanded extraction scope
 

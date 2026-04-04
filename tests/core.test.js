@@ -150,6 +150,8 @@ test("validation corpus summary is deterministic across mixed filing sufficiency
     validatedNumericFieldCount: 13,
     targetedNumericFieldCount: 24,
     maskedNumericFieldCount: 5,
+    conflictCount: 0,
+    attachmentDerivedCount: 0,
     failedNumericFieldCount: 1,
     unresolvedNumericFieldCount: 5,
     notApplicableNumericFieldCount: 0
@@ -210,4 +212,60 @@ test("expanded extraction metrics include category coverage and extended review 
     schedule: { expected: 10, parsed: 2 },
     attachment: { expected: 4, parsed: 1 }
   });
+});
+
+test("all-years aggregation preserves unresolved export states for expanded fields", () => {
+  const record = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan E",
+      planNumber: "005",
+      sponsorEmployerIdentificationNumber: "555555555",
+      planYearBeginDate: "2024-01-01",
+      planYearEndDate: "2024-12-31"
+    },
+    { ingestId: "ing-5", ingestionTimestamp: "2024-02-01T00:00:00Z", schemaRegistry: core.getDefaultSchemaRegistry() }
+  );
+
+  record.fields.assetsEndOfYear = core.normalizeFieldValue("700000", "currency");
+  record.fields.netAssetsEndOfYear = core.normalizeFieldValue(null, "currency");
+  record.extraction.exceptions = [
+    { fieldId: "netAssetsEndOfYear", code: "masked-numeric-evidence" },
+    { fieldId: "assetsEndOfYear", code: "conflict" }
+  ];
+
+  const aggregate = core.aggregateAllYears([record], core.getDefaultSchemaRegistry());
+  assert.equal(aggregate.rows[0].assetsEndOfYear, "700000 [conflict]");
+  assert.equal(aggregate.rows[0].netAssetsEndOfYear, "[masked]");
+  assert.equal(aggregate.rows[0].__cellMeta.assetsEndOfYear.state, "conflicting");
+  assert.equal(aggregate.rows[0].__cellMeta.netAssetsEndOfYear.state, "masked");
+});
+
+test("validation corpus summary includes conflict and attachment-derived counts", () => {
+  const record = core.buildExtractedFromCsvRow(
+    {
+      planName: "Plan F",
+      planNumber: "006",
+      sponsorEmployerIdentificationNumber: "666666666",
+      planYearBeginDate: "2024-01-01",
+      planYearEndDate: "2024-12-31"
+    },
+    { ingestId: "ing-6", ingestionTimestamp: "2024-02-01T00:00:00Z" }
+  );
+
+  record.metrics = {
+    ...record.metrics,
+    filingNumericSufficiency: "partial",
+    validatedNumericFieldCount: 4,
+    targetedNumericFieldCount: 8,
+    maskedNumericFieldCount: 1,
+    conflictCount: 2,
+    attachmentDerivedCount: 3,
+    failedNumericFieldCount: 0,
+    unresolvedNumericFieldCount: 3,
+    notApplicableNumericFieldCount: 0
+  };
+
+  const summary = core.summarizeValidationCorpus([record]);
+  assert.equal(summary.conflictCount, 2);
+  assert.equal(summary.attachmentDerivedCount, 3);
 });
