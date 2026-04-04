@@ -677,6 +677,37 @@ test("plan effective date is not inferred from summary footer dates without an e
   assert.equal(extracted.planNumber.valueCode, "002");
 });
 
+test("filing kind defaults to original when amended or final text only appears in later noisy content", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2021 and ending 12/31/2021",
+    "Name of plan",
+    "Northwind Plan",
+    "Plan number 002",
+    "Employer identification number 14-1338371",
+    "Name of plan sponsor",
+    "Northwind Sponsor",
+    "Schedule H",
+    "some later attachment text mentioning amended annual return and final return in a non-header context"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-1007d",
+      ingestionTimestamp: "2026-04-04T00:00:00Z",
+      fileName: "filing-kind-noise.pdf"
+    }
+  );
+
+  assert.equal(extracted.filingKind.valueText, "original");
+});
+
 test("schedule a c and g boolean fields map into the expanded scaffold", () => {
   const documentText = [
     "Annual Return/Report of Employee Benefit Plan",

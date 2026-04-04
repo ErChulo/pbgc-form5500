@@ -524,13 +524,14 @@
   }
 
   function parseFilingKind(flattenedText) {
-    const text = flattenedText.toLowerCase();
+    const text = String(flattenedText || "").toLowerCase();
+    const topWindow = text.slice(0, 2500);
     const amended =
-      /\bamended\s+(?:annual\s+)?return\/report\b/.test(text) ||
-      /\bamended\s+return\/report\b/.test(text);
+      /amended\s+annual\s+return\/report/.test(topWindow) ||
+      /amended\s+return\/report/.test(topWindow);
     const final =
-      /\bfinal\s+return\/report\b/.test(text) ||
-      /\bfinal\s+annual\s+return\/report\b/.test(text);
+      /final\s+return\/report/.test(topWindow) ||
+      /final\s+annual\s+return\/report/.test(topWindow);
     if (amended && final) {
       return "amended final";
     }
