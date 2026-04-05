@@ -534,7 +534,7 @@ dialog::backdrop {
 
       <footer class="footer">
         <span>Version v0.7.0</span>
-        <span>Build 19d572a</span>
+        <span>Build a874ea2</span>
         <span>Single-file browser build</span>
         <span>Local-only processing</span>
       </footer>
@@ -1737,22 +1737,9 @@ window.__FORM5500_VENDOR__ = {
   }
 
   function parseFilingKind(flattenedText) {
-    const text = flattenedText.toLowerCase();
-    const amended =
-      /\bamended\s+(?:annual\s+)?return\/report\b/.test(text) ||
-      /\bamended\s+return\/report\b/.test(text);
-    const final =
-      /\bfinal\s+return\/report\b/.test(text) ||
-      /\bfinal\s+annual\s+return\/report\b/.test(text);
-    if (amended && final) {
-      return "amended final";
-    }
-    if (amended) {
-      return "amended";
-    }
-    if (final) {
-      return "final";
-    }
+    // Until we have explicit checkbox parsing from the actual form header,
+    // default to original rather than inferring amended/final from noisy text.
+    void flattenedText;
     return "original";
   }
 

@@ -524,23 +524,9 @@
   }
 
   function parseFilingKind(flattenedText) {
-    const text = String(flattenedText || "").toLowerCase();
-    const topWindow = text.slice(0, 2500);
-    const amended =
-      /amended\s+annual\s+return\/report/.test(topWindow) ||
-      /amended\s+return\/report/.test(topWindow);
-    const final =
-      /final\s+return\/report/.test(topWindow) ||
-      /final\s+annual\s+return\/report/.test(topWindow);
-    if (amended && final) {
-      return "amended final";
-    }
-    if (amended) {
-      return "amended";
-    }
-    if (final) {
-      return "final";
-    }
+    // Until we have explicit checkbox parsing from the actual form header,
+    // default to original rather than inferring amended/final from noisy text.
+    void flattenedText;
     return "original";
   }
 
