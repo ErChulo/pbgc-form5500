@@ -35,6 +35,21 @@
     return text;
   }
 
+  function formatCsvValue(columnKey, value) {
+    const text = value == null ? "" : String(value);
+    const excelTextColumns = new Set([
+      "planNumber",
+      "planYearBeginDate",
+      "planYearEndDate",
+      "receivedTimestamp",
+      "extractionQuality"
+    ]);
+    if (!text || !excelTextColumns.has(columnKey)) {
+      return text;
+    }
+    return `="${text.replace(/"/g, "\"\"")}"`;
+  }
+
   function parseCsv(text) {
     const rows = [];
     let row = [];
@@ -724,7 +739,9 @@
 
   function toCsv(columns, rows) {
     const header = columns.map((column) => quoteCsvCell(column.label)).join(",");
-    const body = rows.map((row) => columns.map((column) => quoteCsvCell(row[column.key] || "")).join(","));
+    const body = rows.map((row) =>
+      columns.map((column) => quoteCsvCell(formatCsvValue(column.key, row[column.key] || ""))).join(",")
+    );
     return [header, ...body].join("\n");
   }
 

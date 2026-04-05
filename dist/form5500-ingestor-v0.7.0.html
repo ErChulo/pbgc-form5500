@@ -534,7 +534,7 @@ dialog::backdrop {
 
       <footer class="footer">
         <span>Version v0.7.0</span>
-        <span>Build a874ea2</span>
+        <span>Build 2e29609</span>
         <span>Single-file browser build</span>
         <span>Local-only processing</span>
       </footer>
@@ -1920,8 +1920,13 @@ window.__FORM5500_VENDOR__ = {
     rawMatches.scheduleHAccountantOpinion =
       findAccountantOpinion(prepared.joinedText) || findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
+      findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "27", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
-      findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
+      findSingleValue(
+        prepared.joinedText,
+        ["funding target attainment percentage", "adjusted funding target attainment percentage", "AFTAP", "line 27"],
+        "\\d[\\d.,]*%?"
+      );
     rawMatches.benefitsPaid =
       findLinePairValue(
         prepared.lines,
@@ -2325,6 +2330,21 @@ window.__FORM5500_VENDOR__ = {
       return `"${text.replace(/"/g, "\"\"")}"`;
     }
     return text;
+  }
+
+  function formatCsvValue(columnKey, value) {
+    const text = value == null ? "" : String(value);
+    const excelTextColumns = new Set([
+      "planNumber",
+      "planYearBeginDate",
+      "planYearEndDate",
+      "receivedTimestamp",
+      "extractionQuality"
+    ]);
+    if (!text || !excelTextColumns.has(columnKey)) {
+      return text;
+    }
+    return `="${text.replace(/"/g, "\"\"")}"`;
   }
 
   function parseCsv(text) {
@@ -3016,7 +3036,9 @@ window.__FORM5500_VENDOR__ = {
 
   function toCsv(columns, rows) {
     const header = columns.map((column) => quoteCsvCell(column.label)).join(",");
-    const body = rows.map((row) => columns.map((column) => quoteCsvCell(row[column.key] || "")).join(","));
+    const body = rows.map((row) =>
+      columns.map((column) => quoteCsvCell(formatCsvValue(column.key, row[column.key] || ""))).join(",")
+    );
     return [header, ...body].join("\n");
   }
 

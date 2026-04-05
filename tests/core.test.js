@@ -12,6 +12,22 @@ test("CSV quoting escapes commas, quotes, and newlines", () => {
   assert.equal(csv, 'name,notes\n"ACME ""Plan""","line 1,\nline 2"');
 });
 
+test("CSV export preserves text-like plan numbers, dates, and ratios for spreadsheet consumers", () => {
+  const csv = core.toCsv(
+    [
+      { key: "planNumber", label: "planNumber" },
+      { key: "planYearBeginDate", label: "planYearBeginDate" },
+      { key: "extractionQuality", label: "extractionQuality" }
+    ],
+    [{ planNumber: "002", planYearBeginDate: "2021-01-01", extractionQuality: "11/37" }]
+  );
+
+  assert.equal(
+    csv,
+    'planNumber,planYearBeginDate,extractionQuality\n"=""002""","=""2021-01-01""","=""11/37"""'
+  );
+});
+
 test("preferred filing selection favors latest received timestamp, then filing kind, then ingestion timestamp", () => {
   const olderReceived = core.buildExtractedFromCsvRow(
     {

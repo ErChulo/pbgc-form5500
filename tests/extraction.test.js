@@ -75,6 +75,31 @@ test("PDF-backed extraction maps common filing fields into typed containers", ()
   assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.845");
 });
 
+test("AFTAP extraction supports Schedule SB line 27 variants", () => {
+  const documentText = [
+    "Annual Return/Report of Employee Benefit Plan",
+    "Beginning 01/01/2022 and ending 12/31/2022",
+    "Schedule SB",
+    "27 Funding target attainment percentage 27 82.5%"
+  ].join("\n");
+
+  const extracted = core.buildExtractedFromPdfData(
+    {
+      documentText,
+      pages: [{ pageNumber: 1, text: documentText }],
+      pageCount: 1,
+      textSource: "native"
+    },
+    {
+      ingestId: "ing-aftap-27",
+      ingestionTimestamp: "2026-04-05T00:00:00Z",
+      fileName: "aftap-line27.pdf"
+    }
+  );
+
+  assert.equal(extracted.fields.fundingTargetAttainmentPercent.valueNumber, "0.825");
+});
+
 test("summary footer and trailing line codes are preferred for real filing text", () => {
   const documentText = [
     "Form 5500 (2024) v. 240311 07/01/2024 04/20/2025 X X X X THE COLLEGE OF SAINT ROSE NON-CONTRACT EMPLOYEES' PENSION PLAN 001 07/01/1973 14-1338371 THE COLLEGE OF SAINT ROSE 518-925-1915 432 WESTERN AVENUE ALBANY, NY 12203 611000 Filed with authorized/valid electronic signature.",

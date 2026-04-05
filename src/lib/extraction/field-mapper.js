@@ -707,8 +707,13 @@
     rawMatches.scheduleHAccountantOpinion =
       findAccountantOpinion(prepared.joinedText) || findTextValue(prepared.lines, ["accountant's opinion", "opinion"]);
     rawMatches.fundingTargetAttainmentPercent =
+      findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "27", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
       findTrailingLineCodeValue(prepared.joinedText, "Funding target attainment percentage", "14", "-?\\d[\\d,]*(?:\\.\\d+)?\\s*%?") ||
-      findSingleValue(prepared.joinedText, ["funding target attainment percentage", "line 27"], "\\d[\\d.,]*%?");
+      findSingleValue(
+        prepared.joinedText,
+        ["funding target attainment percentage", "adjusted funding target attainment percentage", "AFTAP", "line 27"],
+        "\\d[\\d.,]*%?"
+      );
     rawMatches.benefitsPaid =
       findLinePairValue(
         prepared.lines,
